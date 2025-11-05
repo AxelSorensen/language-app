@@ -1,0 +1,26 @@
+{
+  "name": "nuxt4-starter",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/icon": "2.1.0",
+    "@tailwindcss/vite": "^4.1.16",
+    "@vueuse/core": "^14.0.0",
+    "nuxt": "^4.2.0",
+    "openai": "^6.8.0",
+    "tailwindcss": "^4.1.16",
+    "vue": "^3.5.22",
+    "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3"
+  }
+}

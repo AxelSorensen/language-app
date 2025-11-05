@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+::spelling-error {
+  text-decoration: wavy red underline;
+}
