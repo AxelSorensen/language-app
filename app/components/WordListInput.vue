@@ -113,6 +113,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  languages: {
+    type: Object,
+    default: () => ({ source: "en", target: "es" }),
+  },
 });
 
 const words = defineModel("words", {
@@ -137,7 +141,7 @@ const isTranslatingFullSentence = ref(false);
 
 async function checkSentence(sentence) {
   try {
-    const res = await $fetch("/api/generate", {
+    const res = await $fetch("/api/translate_words_to_english", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -354,7 +358,7 @@ async function translateFullSentence() {
   isTranslatingFullSentence.value = true;
 
   try {
-    const res = await $fetch("/api/translate_sentence", {
+    const res = await $fetch("/api/translate_sentence_to_english", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -379,7 +383,7 @@ async function translateAndAppendWords() {
   isTranslating.value = true;
 
   try {
-    const res = await $fetch("/api/translate", {
+    const res = await $fetch("/api/translate_text_to_target", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

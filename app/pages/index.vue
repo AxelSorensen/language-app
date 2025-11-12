@@ -1,10 +1,14 @@
 <template>
   <div class="flex p-8 items-center h-screen">
+    <!-- Language Selector -->
+    <LanguageSelector @languageChange="handleLanguageChange" />
+
     <div class="mx-auto">
       <WordListInput
         @wordClick="handleWordClick"
         :selected_word_index="selected_word_index"
         v-model:words="words"
+        :languages="languages"
       />
     </div>
 
@@ -93,12 +97,21 @@
 <script setup>
 import { ref } from "vue";
 import WordListInput from "~/components/WordListInput.vue";
+import LanguageSelector from "~/components/LanguageSelector.vue";
 
 const sidebarOpen = ref(false);
 const selected_word_index = ref(null);
 const words = ref([""]);
 const sentences = ref([]);
 const wordInfo = ref(null);
+const languages = ref({
+  source: "en",
+  target: "es",
+});
+
+function handleLanguageChange(newLanguages) {
+  languages.value = newLanguages;
+}
 
 async function handleWordClick(idx) {
   selected_word_index.value = idx;

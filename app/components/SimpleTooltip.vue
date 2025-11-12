@@ -11,24 +11,20 @@
       :style="{ cursor: type === 'correction' ? 'pointer' : 'default' }"
       @click="type === 'correction' ? $emit('applyCorrection') : null"
     >
-      <span
-        v-if="type === 'translation'"
-        class="inline-flex items-center gap-1"
-      >
+      <span class="inline-flex items-center gap-1">
         <span
-          class="inline-flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full"
+          class="inline-flex items-center justify-center w-5 h-5 rounded-full"
+          :class="type === 'translation' ? 'bg-gray-200' : 'bg-green-100'"
         >
-          <Icon name="heroicons:language" class="w-3 h-3 text-gray-600" />
+          <Icon
+            :name="
+              type === 'translation' ? 'heroicons:language' : 'heroicons:check'
+            "
+            class="w-3 h-3"
+            :class="type === 'translation' ? 'text-gray-600' : 'text-green-600'"
+          />
         </span>
         {{ text }}
-      </span>
-      <span class="inline-flex items-center gap-1" v-else>
-        {{ text }}
-        <span
-          class="inline-flex items-center justify-center w-5 h-5 bg-green-100 rounded-full"
-        >
-          <Icon name="heroicons:check" class="w-3 h-3 text-green-600" />
-        </span>
       </span>
     </span>
     <slot />

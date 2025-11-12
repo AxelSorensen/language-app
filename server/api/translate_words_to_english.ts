@@ -1,22 +1,28 @@
+import { NATIVE_LANGUAGE } from "../constants";
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;
   const sentence = body?.input || "";
+  const settings = getCookie(event, "settings");
+  const targetLanguage = settings
+    ? JSON.parse(settings).targetLanguage?.name || "Spanish"
+    : "Spanish";
+
   // Construct prompt for OpenAI with explicit structured output instructions
   const prompt = `You are a language assistant. Analyze the given sentence and provide information for each word.
 
 For each word in the sentence, return:
 - word: the original word
 - correction: the corrected version (ONLY if the word is genuinely incorrect - spelling errors, grammar mistakes, or incorrect usage). If the word is correct, set this to null.
-- translation: the English translation of the word
+- translation: the ${NATIVE_LANGUAGE} translation of the word
 
 IMPORTANT RULES:
-- Provide translation for EVERY word in the sentence, regardless of language
-- For words that appear to already be in English, provide the word itself as the translation
-- For non-English words, provide the English meaning
+- Provide translation for EVERY word in the sentence to ${NATIVE_LANGUAGE}, regardless of the original language
 - Only provide correction if the word actually needs it (spelling, grammar, or usage errors)
 - If no correction is needed, set correction to null
 - Handle mixed-language sentences properly
+- If the target language is Mandarin Chinese (zh), the input is in Pinyin (romanized Chinese). Translate from Pinyin to English, inferring meaning even if tone marks are missing.
 
 Return a JSON array of objects for each word in the sentence.`;
   const input = `Sentence: "${sentence}"`;
@@ -38,7 +44,7 @@ Return a JSON array of objects for each word in the sentence.`;
             },
             translation: {
               type: "string",
-              description: "English translation of the word",
+              description: `${NATIVE_LANGUAGE} translation of the word`,
             },
           },
           required: ["word", "correction", "translation"],

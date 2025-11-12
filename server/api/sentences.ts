@@ -3,8 +3,12 @@ export default defineEventHandler(async (event) => {
   const llm_service = event.context.llm_service;
   const word = body?.word || "";
   const sentence = body?.sentence || "";
+  const settings = getCookie(event, "settings");
+  const targetLanguage = settings
+    ? JSON.parse(settings).targetLanguage?.name || "Spanish"
+    : "Spanish";
 
-  const prompt = `You are a language assistant. Generate 3 short, simple sentences in the SAME LANGUAGE as the input word that use the given word naturally and correctly.
+  const prompt = `You are a language assistant. Generate 3 short, simple sentences in ${targetLanguage} that use the given word naturally and correctly.
 
 Context: The word "${word}" appears in this sentence: "${sentence}"
 
