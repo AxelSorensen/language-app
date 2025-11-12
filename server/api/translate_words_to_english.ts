@@ -1,13 +1,15 @@
-import { NATIVE_LANGUAGE } from "../constants";
+import { NATIVE_LANGUAGE, WORD_LANGUAGE_INSTRUCTIONS } from "../constants";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;
   const sentence = body?.input || "";
   const settings = getCookie(event, "settings");
-  const targetLanguage = settings
-    ? JSON.parse(settings).targetLanguage?.name || "Spanish"
-    : "Spanish";
+  const parsedSettings = settings ? JSON.parse(settings) : null;
+  const targetLanguageId = parsedSettings?.targetLanguage?.id || "es";
+  const targetLanguage = parsedSettings?.targetLanguage?.name || "Spanish";
+
+  const extraInstruction = WORD_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
 
   // Construct prompt for OpenAI with explicit structured output instructions
   const prompt = `You are a language assistant. Analyze the given sentence and provide information for each word.
@@ -22,7 +24,7 @@ IMPORTANT RULES:
 - Only provide correction if the word actually needs it (spelling, grammar, or usage errors)
 - If no correction is needed, set correction to null
 - Handle mixed-language sentences properly
-- If the target language is Mandarin Chinese (zh), the input is in Pinyin (romanized Chinese). Translate from Pinyin to English, inferring meaning even if tone marks are missing.
+${extraInstruction ? `- ${extraInstruction}` : ""}
 
 Return a JSON array of objects for each word in the sentence.`;
   const input = `Sentence: "${sentence}"`;
