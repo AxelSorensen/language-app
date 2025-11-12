@@ -4,31 +4,36 @@
       <template v-for="(word, idx) in words" :key="idx">
         <SimpleTooltip
           :enabled="!selected_word_index"
-          :text="getTooltipText(word.trim(), idx)"
+          :text="getTooltipText(word.text.trim(), idx)"
           :type="getTooltipType(idx)"
           @applyCorrection="applyCorrection(idx)"
         >
           <input
             ref="word_refs"
             :placeholder="idx === 0 && words.length === 1 ? 'Type word...' : ''"
-            v-model="words[idx]"
-            @mousedown="handleWordMouseDown($event, word.trim(), idx)"
+            v-model="words[idx].text"
+            @input="handleWordInput"
+            @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
             @contextmenu="handleRightClick($event, idx)"
+            @focus="current_word_index = idx"
             @blur="
               () => {
                 handleWordBlur();
+                current_word_index = null;
               }
             "
             @keydown="handleWordKeydown($event, idx)"
             :class="[
-              'mr-1 outline-none border-none field-sizing-content',
+              'mr-1 outline-none border-none field-sizing-content transition-all duration-200',
               output &&
-              output.words &&
-              output.words[idx] &&
-              output.words[idx].correction
+              output.corrections &&
+              words[idx] &&
+              output.corrections[word.id] &&
+              output.corrections[word.id].correction
                 ? 'text-amber-500'
                 : 'text-gray-800',
               idx === selected_word_index ? 'bg-blue-100 rounded px-1' : '',
+              pendingWords.has(word.id) ? 'animate-pulse' : '',
             ]"
           />
         </SimpleTooltip>
@@ -81,23 +86,11 @@
     <!-- Full Translated Sentence Display -->
     <div
       v-if="fullTranslatedSentence"
-      class="mt-2 text-center text-lg text-blue-500"
+      class="mt-2 text-center text-lg text-gray-500"
     >
       {{ fullTranslatedSentence }}
       <!-- Spinner -->
-      <span v-if="isTranslatingFullSentence" class="inline-block ml-2">
-        <div
-          class="inline-block w-1 h-1 bg-blue-500 rounded-full animate-bounce mr-1"
-        ></div>
-        <div
-          class="inline-block w-1 h-1 bg-blue-500 rounded-full animate-bounce mr-1"
-          style="animation-delay: 0.1s"
-        ></div>
-        <div
-          class="inline-block w-1 h-1 bg-blue-500 rounded-full animate-bounce"
-          style="animation-delay: 0.2s"
-        ></div>
-      </span>
+      <Loader v-if="isTranslatingFullSentence" class="ml-2" />
     </div>
   </div>
 </template>
@@ -105,6 +98,7 @@
 <script setup>
 import { ref, nextTick } from "vue";
 import SimpleTooltip from "./SimpleTooltip.vue";
+import Loader from "./Loader.vue";
 
 const emit = defineEmits(["wordClick"]);
 
@@ -121,12 +115,13 @@ const props = defineProps({
 
 const words = defineModel("words", {
   type: Array,
-  default: () => [""],
+  default: () => [{ id: "first", text: "" }],
 });
-const output = ref(false);
+const output = ref({ corrections: {} });
 const selected_word_ref = ref(null);
 const word_refs = ref([]);
 const translate_input_ref = ref(null);
+const current_word_index = ref(null);
 const contextMenu = ref({
   visible: false,
   x: 0,
@@ -137,20 +132,47 @@ const translateMode = ref(false);
 const wordsToTranslate = ref("");
 const isTranslating = ref(false);
 const fullTranslatedSentence = ref("");
+const checkTimeout = ref(null);
 const isTranslatingFullSentence = ref(false);
+const pendingWords = ref(new Set());
 
-async function checkSentence(sentence) {
+function generateWordId() {
+  return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+}
+
+async function checkWord(word, wordIndex) {
+  if (
+    pendingWords.value.has(word.id) ||
+    (Object.keys(output.value.corrections).includes(
+      words.value[wordIndex].id
+    ) &&
+      output.value.corrections[word.id].word === word.text)
+  )
+    return; // Already checking
+  pendingWords.value.add(word.id);
   try {
-    const res = await $fetch("/api/translate_words_to_english", {
+    const contextText = words.value.map((w) => w.text).join(" ");
+
+    const res = await $fetch("/api/process_word", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        input: sentence,
+        input: word.text,
+        context: contextText,
       }),
     });
-    output.value = res.result;
+
+    if (!output.value) {
+      output.value = { corrections: {} };
+    }
+
+    if (res) {
+      output.value.corrections[word.id] = res;
+    }
   } catch (e) {
-    output.value = "";
+    console.error("Check word failed:", e);
+  } finally {
+    pendingWords.value.delete(word.id);
   }
 }
 
@@ -159,10 +181,10 @@ function handleWordKeydown(e, idx) {
   if (e.key === "Tab") {
     e.preventDefault();
     // Remove empty strings from words array
-    words.value = words.value.filter((word) => word.trim() !== "");
+    words.value = words.value.filter((word) => word.text.trim() !== "");
     // If all words were empty, add back one empty string
     if (words.value.length === 0) {
-      words.value.push("");
+      words.value.push({ id: "first", text: "" });
     }
     translateMode.value = !translateMode.value;
     if (translateMode.value) {
@@ -184,8 +206,11 @@ function handleWordKeydown(e, idx) {
     ) {
       e.preventDefault();
       const prevIdx = idx - 1;
-      const prevValue = words.value[prevIdx];
-      words.value[prevIdx] = prevValue + e.target.value;
+      const prevValue = words.value[prevIdx].text;
+      words.value[prevIdx] = {
+        id: words.value[prevIdx].id,
+        text: prevValue + e.target.value,
+      };
       words.value.splice(idx, 1);
       nextTick(() => {
         word_refs.value[prevIdx]?.focus();
@@ -208,8 +233,13 @@ function handleWordKeydown(e, idx) {
     const start = e.target.selectionStart;
     const before = value.slice(0, start);
     const after = value.slice(start);
-    words.value[idx] = before;
-    words.value.splice(idx + 1, 0, after);
+
+    checkWord(words.value[idx], idx);
+
+    // Always update the current word with the text before cursor
+
+    // Always add a new word after the current one
+    words.value.splice(idx + 1, 0, { id: generateWordId(), text: "" });
     nextTick(() => {
       word_refs.value[idx + 1]?.focus();
       if (word_refs.value[idx + 1]) {
@@ -217,21 +247,11 @@ function handleWordKeydown(e, idx) {
         word_refs.value[idx + 1].selectionEnd = 0;
       }
     });
+
     // Translate the full sentence after adding word
     nextTick(() => {
       translateFullSentence();
-      checkSentence(words.value.join(" "));
     });
-    return;
-  }
-
-  if (e.key === "Space") {
-    e.preventDefault();
-    word_refs.value[idx - 1]?.focus();
-    if (word_refs.value[idx - 1]) {
-      word_refs.value[idx - 1].selectionStart = 0;
-      word_refs.value[idx - 1].selectionEnd = 0;
-    }
     return;
   }
 
@@ -270,33 +290,46 @@ function handleWordMouseDown(event, word, idx) {
 }
 
 function handleWordBlur() {
+  if (checkTimeout.value) {
+    clearTimeout(checkTimeout.value);
+    checkTimeout.value = null;
+  }
   selected_word_ref.value = null;
 }
 
-function applyCorrection(idx) {
-  if (output.value && output.value.words) {
-    const wordInfo = output.value.words[idx];
-    if (wordInfo && wordInfo.correction) {
-      words.value[idx] = wordInfo.correction;
-      // Clear the correction so the word is no longer highlighted
-      wordInfo.correction = null;
-      // Optionally refocus the input
-      nextTick(() => {
-        word_refs.value[idx]?.focus();
-      });
-    }
-  }
-  checkSentence(words.value.join(" "));
+function handleWordInput() {
+  if (checkTimeout.value) clearTimeout(checkTimeout.value);
+  checkTimeout.value = setTimeout(() => {
+    checkWord(words.value[current_word_index.value], current_word_index.value);
+    translateFullSentence();
+  }, 500);
 }
 
-function getTooltipText(word, idx) {
-  if (!output.value || !output.value.words) {
-    // If no output data for this word, just return empty or the word itself
+function applyCorrection(idx) {
+  if (!output.value || !output.value.corrections) return;
+
+  const wordId = words.value[idx]?.id;
+  if (!wordId) return;
+
+  const wordInfo = output.value.corrections[wordId];
+  if (wordInfo && wordInfo.correction) {
+    // Save the currently focused element
+    words.value[idx] = { id: generateWordId(), text: wordInfo.correction };
+    // Clear the correction so the word is no longer highlighted
+    wordInfo.correction = null;
+    // Re-check the corrected word to get its translation and refocus
+  }
+}
+
+function getTooltipText(trimmedWord, idx) {
+  if (!output.value || !output.value.corrections) {
     return "";
   }
 
-  const trimmedWord = word.trim();
-  const wordInfo = output.value.words.find((w) => w.word === trimmedWord);
+  const wordId = words.value[idx]?.id;
+  if (!wordId) return "";
+
+  const wordInfo = output.value.corrections[wordId];
 
   if (!wordInfo) {
     return "";
@@ -310,12 +343,14 @@ function getTooltipText(word, idx) {
 }
 
 function getTooltipType(idx) {
-  if (!output.value || !output.value.words) {
+  if (!output.value || !output.value.corrections) {
     return "translation";
   }
 
-  const word = words.value[idx]?.trim();
-  const wordInfo = output.value.words.find((w) => w.word === word);
+  const wordId = words.value[idx]?.id;
+  if (!wordId) return "translation";
+
+  const wordInfo = output.value.corrections[wordId];
 
   if (!wordInfo) {
     return "translation";
@@ -342,7 +377,7 @@ function selectWord(wordIndex) {
 function deleteWord(wordIndex) {
   words.value.splice(wordIndex, 1);
   if (words.value.length === 0) {
-    words.value.push("");
+    words.value.push({ id: "first", text: "" });
   }
   hideContextMenu();
 }
@@ -352,7 +387,10 @@ function hideContextMenu() {
 }
 
 async function translateFullSentence() {
-  const sentence = words.value.join(" ").trim();
+  const sentence = words.value
+    .map((w) => w.text)
+    .join(" ")
+    .trim();
   if (!sentence) return;
 
   isTranslatingFullSentence.value = true;
@@ -379,7 +417,7 @@ async function translateFullSentence() {
 async function translateAndAppendWords() {
   if (!wordsToTranslate.value.trim()) return;
 
-  const sentence = words.value.join(" ");
+  const sentence = words.value.map((w) => w.text).join(" ");
   isTranslating.value = true;
 
   try {
@@ -398,7 +436,9 @@ async function translateAndAppendWords() {
         .split(/\s+/)
         .filter((word) => word.trim());
       const initialLength = words.value.length;
-      words.value.push(...translatedWords);
+      words.value.push(
+        ...translatedWords.map((text) => ({ id: generateWordId(), text }))
+      );
 
       // Focus the last added word and position cursor at the end
       if (translatedWords.length > 0) {
@@ -412,6 +452,7 @@ async function translateAndAppendWords() {
               translatedWords[translatedWords.length - 1].length;
           }
         });
+        // Check each new word
       }
     }
   } catch (e) {
@@ -423,9 +464,6 @@ async function translateAndAppendWords() {
   // Clear translate input and exit translate mode
   wordsToTranslate.value = "";
   translateMode.value = false;
-
-  // Recheck the sentence with new words
-  checkSentence(words.value.join(" "));
 }
 
 async function handleTranslateKeydown(e) {

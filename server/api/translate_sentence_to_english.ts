@@ -13,14 +13,14 @@ export default defineEventHandler(async (event) => {
 
   const prompt = `You are a language assistant. Translate the given sentence from ${targetLanguageName} to ${NATIVE_LANGUAGE}.
 
-Sentence to translate: "${sentence}"
+Sentence to translate: ${sentence}
 
 Please translate the entire sentence to ${NATIVE_LANGUAGE}, maintaining the same level of formality and structure as the original.
 ${extraInstruction}
 
 Return only the translated sentence.`;
 
-  const input = `Translate sentence: "${sentence}"`;
+  const input = `Translate sentence: ${sentence}`;
   const schema = {
     type: "object",
     properties: {

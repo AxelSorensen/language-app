@@ -17,6 +17,7 @@ import { ref, onMounted, watch } from "vue";
 
 const languages = [
   { id: "es", name: "Spanish" },
+  { id: "da", name: "Danish" },
   { id: "fr", name: "French" },
   { id: "de", name: "German" },
   { id: "it", name: "Italian" },
@@ -38,6 +39,7 @@ const emit = defineEmits(["languageChange"]);
 
 function getFlag(id) {
   const flags = {
+    da: "🇩🇰",
     es: "🇪🇸",
     fr: "🇫🇷",
     de: "🇩🇪",

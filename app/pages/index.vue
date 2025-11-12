@@ -101,7 +101,7 @@ import LanguageSelector from "~/components/LanguageSelector.vue";
 
 const sidebarOpen = ref(false);
 const selected_word_index = ref(null);
-const words = ref([""]);
+const words = ref([{ id: "first", text: "" }]);
 const sentences = ref([]);
 const wordInfo = ref(null);
 const languages = ref({
@@ -122,8 +122,8 @@ async function handleWordClick(idx) {
     const response = await $fetch("/api/sentences", {
       method: "POST",
       body: {
-        word: words.value[idx].trim(),
-        sentence: words.value.join(" "),
+        word: words.value[idx].text.trim(),
+        sentence: words.value.map((w) => w.text).join(" "),
       },
     });
     sentences.value = response.result.sentences || [];
@@ -137,8 +137,8 @@ async function handleWordClick(idx) {
     const response = await $fetch("/api/word-info", {
       method: "POST",
       body: {
-        word: words.value[idx].trim(),
-        sentence: words.value.join(" "),
+        word: words.value[idx].text.trim(),
+        sentence: words.value.map((w) => w.text).join(" "),
       },
     });
     wordInfo.value = response.result || null;
