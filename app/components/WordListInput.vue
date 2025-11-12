@@ -135,6 +135,7 @@ const fullTranslatedSentence = ref("");
 const checkTimeout = ref(null);
 const isTranslatingFullSentence = ref(false);
 const pendingWords = ref(new Set());
+const currentSelection = ref(null);
 
 function generateWordId() {
   return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
@@ -229,10 +230,6 @@ function handleWordKeydown(e, idx) {
       return;
     }
     e.preventDefault();
-    const value = e.target.value;
-    const start = e.target.selectionStart;
-    const before = value.slice(0, start);
-    const after = value.slice(start);
 
     checkWord(words.value[idx], idx);
 
@@ -313,11 +310,20 @@ function applyCorrection(idx) {
 
   const wordInfo = output.value.corrections[wordId];
   if (wordInfo && wordInfo.correction) {
-    // Save the currently focused element
     words.value[idx] = { id: generateWordId(), text: wordInfo.correction };
     // Clear the correction so the word is no longer highlighted
+    wordInfo.word = wordInfo.correction;
     wordInfo.correction = null;
-    // Re-check the corrected word to get its translation and refocus
+
+    // Focus the input and set cursor to the end
+    nextTick(() => {
+      if (word_refs.value[idx]) {
+        word_refs.value[idx].focus();
+        const textLength = words.value[idx].text.length;
+        word_refs.value[idx].selectionStart = textLength;
+        word_refs.value[idx].selectionEnd = textLength;
+      }
+    });
   }
 }
 
