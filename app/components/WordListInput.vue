@@ -276,13 +276,16 @@ function setupEventListeners() {
   // Set up event listeners for word inputs
   word_refs.value.forEach((input, idx) => {
     if (input) {
-      input.addEventListener('keydown', (e) => handleWordKeydown(e, idx));
+      input.addEventListener("keydown", (e) => handleWordKeydown(e, idx));
     }
   });
-  
+
   // Set up event listener for translate input
   if (translate_input_ref.value) {
-    translate_input_ref.value.addEventListener('keydown', handleTranslateKeydown);
+    translate_input_ref.value.addEventListener(
+      "keydown",
+      handleTranslateKeydown
+    );
   }
 }
 
@@ -711,7 +714,7 @@ function deleteWord(wordIndex) {
     words.value.push({ id: "first", text: "" });
   }
   hideContextMenu();
-  
+
   // Set up event listeners after word deletion
   nextTick(() => {
     setupEventListeners();
