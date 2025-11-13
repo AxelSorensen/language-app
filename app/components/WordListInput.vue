@@ -1,11 +1,11 @@
 <template>
-  <div class="max-w-[800px] relative">
+  <div class="max-w-[800px] p-4 flex flex-col justify-center relative">
     <div
       class="flex flex-row flex-wrap justify-center items-center text-2xl font-sans"
     >
       <template v-for="(word, idx) in words" :key="idx">
         <SimpleTooltip
-          :enabled="selected_word_index === null || selected_word_index !== idx"
+          :enabled="!selected_word_index"
           :text="getTooltipText(word.text.trim(), idx)"
           :type="getTooltipType(idx)"
           :explanation="getExplanationText(idx)"
@@ -19,7 +19,7 @@
             "
             v-model="words[idx].text"
             autocapitalize="false"
-            @input="handleWordInput"
+            @input="handleWordInput($event)"
             @keydown="handleWordKeydown($event, idx)"
             @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
             @contextmenu="handleRightClick($event, idx)"
@@ -187,11 +187,11 @@
 
     <!-- Mobile Translate Mode Button -->
     <button
-      v-if="!isTranslatingMobile"
+      v-if="!isTranslatingMobile && words[0]?.text"
       class="md:hidden transition-all duration-300"
       :class="[
         'fixed px-4 py-3 bg-purple-100 text-purple-700 text-base font-semibold hover:bg-purple-200 transition-colors rounded-lg border border-purple-300 flex items-center justify-center gap-2 min-h-12',
-        keyboardVisible ? 'top-4 left-4 right-4' : 'bottom-4 left-4 right-4',
+        keyboardVisible ? 'bottom-4 left-4 right-4' : 'bottom-4 left-4 right-4',
       ]"
       @click="toggleTranslateMode"
     >
@@ -456,14 +456,6 @@ function handleWordKeydown(e, idx) {
     return;
   }
 
-  // Handle select all (Ctrl+A or Cmd+A)
-
-  if (e.key === " ") {
-    e.preventDefault();
-    handleSpace(idx);
-    return;
-  }
-
   if (e.key === "Backspace") {
     if (
       e.target.selectionStart === 0 &&
@@ -547,23 +539,54 @@ function handleWordBlur() {
   selected_word_ref.value = null;
 }
 
-function handleWordInput() {
+function handleWordInput(event) {
+  console.log("Input event:", event);
+  const currentIdx = current_word_index.value;
+
+  // Handle spaces immediately when they appear in input
+  if (currentIdx !== null && words.value[currentIdx].text.includes(" ")) {
+    const parts = words.value[currentIdx].text
+      .split(/\s+/)
+      .filter((word) => word.trim() !== "");
+    if (parts.length > 1) {
+      // Multiple words - split them
+      words.value[currentIdx].text = parts[0];
+      for (let i = 1; i < parts.length; i++) {
+        words.value.splice(currentIdx + i, 0, {
+          id: generateWordId(),
+          text: parts[i],
+        });
+      }
+      // Add empty input at the end
+      words.value.splice(currentIdx + parts.length, 0, {
+        id: generateWordId(),
+        text: "",
+      });
+      nextTick(() => {
+        word_refs.value[currentIdx + parts.length]?.focus();
+      });
+    } else {
+      // Just one word followed by space(s) - create new empty input
+      words.value[currentIdx].text = parts[0];
+      handleSpace(currentIdx);
+    }
+    return;
+  }
+
   if (checkTimeout.value) clearTimeout(checkTimeout.value);
   checkTimeout.value = setTimeout(() => {
     const currentIdx = current_word_index.value;
-    if (currentIdx !== null) {
-      // Check if all words are empty - if so, reset everything
-      const allWordsEmpty = words.value.every((word) => !word.text.trim());
-      if (allWordsEmpty) {
-        output.value = { corrections: {} };
-        sentenceErrors.value = null;
-        fullTranslatedSentence.value = "";
-        return;
-      }
-      checkWord(words.value[currentIdx], currentIdx);
-      checkSentence();
-      translateFullSentence();
+    // Check if all words are empty - if so, reset everything
+    const allWordsEmpty = words.value.every((word) => !word.text.trim());
+    if (allWordsEmpty) {
+      output.value = { corrections: {} };
+      sentenceErrors.value = null;
+      fullTranslatedSentence.value = "";
+      return;
     }
+    checkWord(words.value[currentIdx], currentIdx);
+    checkSentence();
+    translateFullSentence();
   }, 500);
 }
 
@@ -931,5 +954,16 @@ async function handleTranslateKeydown(e) {
 
 .animate-spin {
   animation: spin 0.8s ease-in-out;
+}
+
+/* Keyboard visibility adjustments for mobile */
+.keyboard-visible {
+  position: fixed !important;
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  z-index: 1000 !important;
 }
 </style>

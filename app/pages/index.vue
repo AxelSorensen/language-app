@@ -1,5 +1,5 @@
 <template>
-  <div class="flex p-8 items-center h-screen">
+  <div class="flex overflow-hidden items-center h-screen">
     <!-- Language Selector -->
     <LanguageSelector @languageChange="handleLanguageChange" />
 
@@ -15,9 +15,9 @@
     <!-- Sidebar -->
     <div
       v-if="sidebarOpen"
-      class="fixed right-0 top-0 h-full w-[800px] bg-white border-l border-gray-200 shadow-lg z-50 transform transition-transform duration-300 ease-in-out"
+      class="fixed right-0 top-0 h-full w-[800px] bg-white border border-gray-200 shadow-lg z-50 transform transition-transform duration-300 ease-in-out p-6"
     >
-      <div class="p-6">
+      <div>
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-800">
             {{ words[selected_word_index] }}

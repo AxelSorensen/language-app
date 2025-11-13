@@ -3,7 +3,7 @@
     <span
       v-if="text && enabled"
       :class="[
-        'absolute left-1/2 -translate-x-1/2 -top-10 px-3 py-2 text-sm rounded-xl z-10 whitespace-nowrap border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity',
+        'absolute left-1/2 -translate-x-1/2 -top-10 px-3 py-2 text-sm rounded-xl z-100 whitespace-nowrap border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity',
         type === 'translation'
           ? ' text-gray-600'
           : type === 'correction' && text === 'null'
