@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-[800px] relative">
+  <div class="max-w-[800px] relative overflow-hidden">
     <div
       class="flex flex-row flex-wrap justify-center items-center text-2xl font-sans"
     >
@@ -18,6 +18,7 @@
               idx === 0 && words.length === 1 ? 'Start writing...' : ''
             "
             v-model="words[idx].text"
+            autocapitalize="false"
             @input="handleWordInput"
             @keydown="handleWordKeydown($event, idx)"
             @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
@@ -30,7 +31,7 @@
               }
             "
             :class="[
-              'mr-1 outline-none border-none field-sizing-content transition-all duration-200',
+              'mr-1 outline-none border-none field-sizing-content  transition-all duration-200',
               output &&
               output.corrections &&
               words[idx] &&
@@ -60,15 +61,16 @@
         ]"
         placeholder="words to translate..."
         v-model="wordsToTranslate"
+        @keydown="handleTranslateKeydown($event)"
       />
     </div>
 
     <!-- Writing Topic CTA - Full width under input -->
     <div
-      v-if="!words[0].text"
+      v-if="!words[0]?.text"
       class="mt-6 text-center transition-opacity duration-300"
       :class="
-        words.length === 1 && !words[0].text
+        words.length === 1 && !words[0]?.text
           ? 'opacity-100'
           : 'opacity-0 pointer-events-none'
       "
@@ -182,11 +184,35 @@
       class="fixed inset-0 z-40"
       @click="hideContextMenu"
     ></div>
+
+    <!-- Mobile Translate Mode Button -->
+    <button
+      v-if="!isTranslatingMobile"
+      class="md:hidden fixed bottom-4 left-4 right-4 px-4 py-3 bg-purple-100 text-purple-700 text-base font-semibold hover:bg-purple-200 transition-colors rounded-lg border border-purple-300 flex items-center justify-center gap-2 min-h-12"
+      @click="toggleTranslateMode"
+    >
+      <svg
+        class="w-4 h-4 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+        ></path>
+      </svg>
+      <span class="text-center leading-tight max-h-12 overflow-y-auto">{{
+        translateMode ? "Accept" : "Translate Mode"
+      }}</span>
+    </button>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from "vue";
+import { ref, nextTick, computed } from "vue";
 import SimpleTooltip from "./SimpleTooltip.vue";
 import Loader from "./Loader.vue";
 
@@ -243,6 +269,14 @@ const writingTopics = ref([
 const currentTopic = ref("");
 const isDiceAnimating = ref(false);
 const isGeneratingTopic = ref(false);
+const isTranslatingMobile = ref(false);
+
+const isMobile = computed(() => {
+  if (process.client) {
+    return window.innerWidth < 768; // md breakpoint in Tailwind
+  }
+  return false;
+});
 
 const highlightedWordIndices = computed(() => {
   if (!sentenceErrors.value?.wrong_text) return new Set();
@@ -367,8 +401,8 @@ async function checkSentence() {
 }
 
 function handleWordKeydown(e, idx) {
-  // Handle Tab key - toggle translate mode
-  if (e.key === "Tab") {
+  // Handle Tab key - toggle translate mode (desktop only)
+  if (e.key === "Tab" && !isMobile.value) {
     e.preventDefault();
     // Remove empty strings from words array
     words.value = words.value.filter((word) => word.text.trim() !== "");
@@ -387,6 +421,12 @@ function handleWordKeydown(e, idx) {
   }
 
   // Handle select all (Ctrl+A or Cmd+A)
+
+  if (e.key === " ") {
+    e.preventDefault();
+    handleSpace(idx);
+    return;
+  }
 
   if (e.key === "Backspace") {
     if (
@@ -475,24 +515,45 @@ function handleWordInput() {
   if (checkTimeout.value) clearTimeout(checkTimeout.value);
   checkTimeout.value = setTimeout(() => {
     const currentIdx = current_word_index.value;
-    if (currentIdx !== null && words.value[currentIdx].text.includes(" ")) {
-      const beforeSpace = words.value[currentIdx].text.split(" ")[0];
-      words.value[currentIdx].text = beforeSpace;
-      handleSpace(currentIdx);
-      return;
+    if (currentIdx !== null) {
+      // Check if all words are empty - if so, reset everything
+      const allWordsEmpty = words.value.every((word) => !word.text.trim());
+      if (allWordsEmpty) {
+        output.value = { corrections: {} };
+        sentenceErrors.value = null;
+        fullTranslatedSentence.value = "";
+        return;
+      }
+      checkWord(words.value[currentIdx], currentIdx);
+      checkSentence();
+      translateFullSentence();
     }
-    // Check if all words are empty - if so, reset everything
-    const allWordsEmpty = words.value.every((word) => !word.text.trim());
-    if (allWordsEmpty) {
-      output.value = { corrections: {} };
-      sentenceErrors.value = null;
-      fullTranslatedSentence.value = "";
-      return;
-    }
-    checkWord(words.value[currentIdx], currentIdx);
-    checkSentence();
-    translateFullSentence();
   }, 500);
+}
+
+async function toggleTranslateMode() {
+  if (translateMode.value) {
+    // Accept: like pressing Tab in translate mode
+    if (wordsToTranslate.value.trim()) {
+      isTranslatingMobile.value = true;
+      await translateAndAppendWords();
+      await checkSentence();
+      await translateFullSentence();
+      isTranslatingMobile.value = false;
+    } else {
+      translateMode.value = false;
+    }
+  } else {
+    // Enter translate mode: like pressing Tab
+    words.value = words.value.filter((word) => word.text.trim() !== "");
+    if (words.value.length === 0) {
+      words.value.push({ id: "first", text: "" });
+    }
+    translateMode.value = true;
+    nextTick(() => {
+      translate_input_ref.value?.focus();
+    });
+  }
 }
 
 function applyCorrection(idx) {
