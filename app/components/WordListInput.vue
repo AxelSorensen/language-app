@@ -78,11 +78,12 @@
         <!-- Translate Input -->
         <input
           inputmode="none"
-          v-if="translateMode"
+          v-if="translateMode || isTranslatingMobile"
           ref="translate_input_ref"
           class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans"
           :class="[
-            isTranslating ? ' animate-pulse text-purple-500' : 'text-gray-500',
+            (translateMode || isTranslatingMobile) ? 'text-purple-600' : 'text-gray-500',
+            isTranslatingMobile ? 'animate-pulse' : '',
           ]"
           placeholder="words to translate..."
           v-model="wordsToTranslate"
@@ -252,6 +253,8 @@
       @click="refocusCurrentInput"
       :input="currentInputValue"
       :caps-lock="isCapsLock"
+      :translate-mode="translateMode"
+      :is-translating="isTranslatingMobile"
       class="fixed bottom-0 left-0 right-0 w-screen z-50"
     />
   </div>
@@ -423,7 +426,13 @@ function onKeyPress(button) {
 
   // Handle special keys
   if (button === "{space}") {
-    if (
+    if (translateMode.value) {
+      // In translate mode, add space to translate input
+      wordsToTranslate.value += " ";
+      nextTick(() => {
+        translate_input_ref.value?.focus();
+      });
+    } else if (
       current_word_index.value !== null &&
       current_word_index.value >= 0 &&
       current_word_index.value < words.value.length
@@ -456,7 +465,15 @@ function onKeyPress(button) {
       }
     }
   } else if (button === "{bksp}") {
-    if (
+    if (translateMode.value) {
+      // In translate mode, remove last character from translate input
+      if (wordsToTranslate.value.length > 0) {
+        wordsToTranslate.value = wordsToTranslate.value.slice(0, -1);
+        nextTick(() => {
+          translate_input_ref.value?.focus();
+        });
+      }
+    } else if (
       current_word_index.value !== null &&
       current_word_index.value >= 0 &&
       current_word_index.value < words.value.length
@@ -534,8 +551,21 @@ function onKeyPress(button) {
     }
     // In normal mode, Enter doesn't do anything special
   } else {
-    // Handle regular letter keys - insert at cursor position
-    if (
+    // Handle regular letter keys
+    if (translateMode.value) {
+      // In translate mode, insert characters into the translate input
+      const charToInsert = isCapsLock.value ? button.toUpperCase() : button;
+      wordsToTranslate.value += charToInsert;
+      nextTick(() => {
+        translate_input_ref.value?.focus();
+        // Set cursor to end of input
+        if (translate_input_ref.value) {
+          const len = wordsToTranslate.value.length;
+          translate_input_ref.value.selectionStart = len;
+          translate_input_ref.value.selectionEnd = len;
+        }
+      });
+    } else if (
       current_word_index.value !== null &&
       current_word_index.value >= 0 &&
       current_word_index.value < words.value.length
@@ -854,17 +884,24 @@ function handleWordInput(event) {
 
 async function toggleTranslateMode() {
   if (translateMode.value) {
+    // Exit translate mode immediately (don't wait for translation)
+    translateMode.value = false;
+    translateInputFocused.value = false;
+    
     // Accept: like pressing Tab in translate mode
     if (wordsToTranslate.value.trim()) {
       isTranslatingMobile.value = true;
       await translateAndAppendWords();
+      isTranslatingMobile.value = false;
+      
+      // Now exit translate mode and clear the input
+      translateMode.value = false;
+      wordsToTranslate.value = "";
+      
       await checkSentence();
       await translateFullSentence();
-      isTranslatingMobile.value = false;
     } else {
       // Exit translate mode without adding words - just clear translate input
-      translateMode.value = false;
-      translateInputFocused.value = false;
       wordsToTranslate.value = "";
 
       // Restore focus to previous word input

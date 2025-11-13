@@ -13,8 +13,11 @@ export default defineNuxtConfig({
       // OPENAI_API_KEY: process.env.OPENAI_API_KEY
     },
   },
+  devServer: {
+    host: "0.0.0.0",
+  },
 
-  devtools: { enabled: true },
+  // devtools: { enabled: true },
   css: ["./app/assets/css/main.css"],
 
   vite: {
