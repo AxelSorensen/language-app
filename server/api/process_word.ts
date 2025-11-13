@@ -20,6 +20,7 @@ You are translating from ${targetLanguage} to ${NATIVE_LANGUAGE}.
 For the word you analyze, return:
 - word: the original word
 - correction: the corrected version (ONLY if the word is genuinely incorrect - spelling errors, grammar mistakes, or incorrect usage). If the word is correct, set this to null.
+- explanation: a very brief explanation of why this correction is needed (ONLY if correction is provided, otherwise null)
 - translation: the ${NATIVE_LANGUAGE} translation of the word, considering the full sentence context
 
 IMPORTANT RULES:
@@ -27,7 +28,7 @@ IMPORTANT RULES:
 - Consider the entire sentence context when providing the translation to ensure accuracy
 - Provide translation from ${targetLanguage} to ${NATIVE_LANGUAGE}
 - Only provide correction if the word actually needs it (spelling, grammar, or usage errors)
-- If no correction is needed, set correction to null
+- If no correction is needed, set correction and explanation to null
 - Handle mixed-language input properly
 ${extraInstruction ? `- ${extraInstruction}` : ""}
 
@@ -44,12 +45,17 @@ Return a JSON object with the word information.`;
         type: ["string", "null"],
         description: "Corrected word (only if incorrect, otherwise null)",
       },
+      explanation: {
+        type: ["string", "null"],
+        description:
+          "Brief explanation of why the correction is needed (only if correction provided, otherwise null)",
+      },
       translation: {
         type: "string",
         description: `${NATIVE_LANGUAGE} translation of the word`,
       },
     },
-    required: ["word", "correction", "translation"],
+    required: ["word", "correction", "explanation", "translation"],
     additionalProperties: false,
   };
   const result = await llm_service.generate(
@@ -65,6 +71,8 @@ Return a JSON object with the word information.`;
         result.correction.trim().toLowerCase()
         ? result.correction
         : null;
+    // Clear explanation if no correction
+    result.explanation = result.correction ? result.explanation : null;
   }
   console.log("Filtered result:", result);
   return result;

@@ -4,6 +4,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;
   const text = body?.text || "";
+  const context = body?.context || "";
   const sentence = body?.sentence || "";
   const settings = getCookie(event, "settings");
   const targetLanguage = settings
