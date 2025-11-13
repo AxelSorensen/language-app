@@ -18,7 +18,7 @@
               idx === 0 && words.length === 1 ? 'Start writing...' : ''
             "
             v-model="words[idx].text"
-            autocapitalize="false"
+            autocapitalize="off"
             @input="handleWordInput($event)"
             @keydown="handleWordKeydown($event, idx)"
             @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
