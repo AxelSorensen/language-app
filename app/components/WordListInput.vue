@@ -1,7 +1,11 @@
 <template>
-  <div class="grid grid-rows-[300,1fr] grid-cols-1 h-screen w-full">
+  <div
+    class="grid grid-rows-[300,1fr] grid-cols-1 h-screen w-full"
+    :class="isKeyboardVisible ? 'pb-32 sm:pb-36' : ''"
+  >
     <div class="max-w-[800px] p-4 flex flex-col justify-center relative">
       <!-- Reset Button -->
+
       <button
         v-if="hasText"
         @click="clearAllText"
@@ -48,11 +52,7 @@
               @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
               @contextmenu="handleRightClick($event, idx)"
               @focus="handleWordFocus(idx)"
-              @blur="
-                () => {
-                  current_word_index = null;
-                }
-              "
+              @blur="handleWordBlur(idx)"
               :class="[
                 'mr-1 outline-none border-none field-sizing-content  transition-all duration-200',
                 output &&
@@ -85,6 +85,7 @@
           placeholder="words to translate..."
           v-model="wordsToTranslate"
           @keydown="handleTranslateKeydown($event)"
+          @focus="handleTranslateFocus"
         />
       </div>
 
@@ -240,9 +241,17 @@
           translateMode ? "Accept" : "Translate Mode"
         }}</span>
       </button>
-
-      <!-- Virtual Keyboard - Bottom of screen when input is focused -->
     </div>
+
+    <!-- Virtual Keyboard Row -->
+    <CustomKeyboard
+      v-if="isKeyboardVisible"
+      @onKeyPress="onKeyPress"
+      @click="refocusCurrentInput"
+      :input="currentInputValue"
+      :caps-lock="isCapsLock"
+      class="fixed bottom-0 left-0 right-0 w-screen z-50"
+    />
   </div>
 </template>
 
@@ -250,6 +259,7 @@
 import { ref, nextTick, computed } from "vue";
 import SimpleTooltip from "./SimpleTooltip.vue";
 import Loader from "./Loader.vue";
+import CustomKeyboard from "./CustomKeyboard.vue";
 
 const emit = defineEmits(["wordClick"]);
 
@@ -264,6 +274,15 @@ const props = defineProps({
   },
 });
 
+const handleWordFocus = (idx) => {
+  isKeyboardVisible.value = true;
+  current_word_index.value = idx;
+};
+
+const handleWordBlur = (idx) => {
+  // Keep keyboard visible when blurring, but don't change current_word_index
+  // This allows keyboard to continue working if user clicks buttons
+};
 const words = defineModel("words", {
   type: Array,
   default: () => [{ id: "first", text: "" }],
@@ -288,6 +307,9 @@ const checkTimeout = ref(null);
 const isTranslatingFullSentence = ref(false);
 const pendingWords = ref(new Set());
 const currentSelection = ref(null);
+const previousWordIndex = ref(null);
+const previousCursorPosition = ref(null);
+const isCapsLock = ref(false);
 const writingTopics = ref([
   "What was your most memorable experience at work?",
   "Describe your dream vacation destination and why you want to go there",
@@ -313,7 +335,8 @@ const currentTopic = ref("");
 const isDiceAnimating = ref(false);
 const isGeneratingTopic = ref(false);
 const isTranslatingMobile = ref(false);
-const keyboardVisible = ref(false);
+const translateInputFocused = ref(false);
+const isKeyboardVisible = ref(false);
 const originalViewportHeight = ref(0);
 
 const highlightedWordIndices = computed(() => {
@@ -350,41 +373,223 @@ const hasText = computed(() => {
 });
 
 const currentInputValue = computed(() => {
-  if (current_word_index.value !== null) {
-    return words.value[current_word_index.value].text;
+  if (
+    current_word_index.value !== null &&
+    current_word_index.value >= 0 &&
+    current_word_index.value < words.value.length
+  ) {
+    return words.value[current_word_index.value]?.text || "";
   }
   return "";
 });
 
-// Keyboard detection for mobile
-if (process.client) {
-  originalViewportHeight.value = window.innerHeight;
-
-  const checkKeyboard = () => {
-    const currentHeight = window.innerHeight;
-    const heightDifference = originalViewportHeight.value - currentHeight;
-
-    // If height difference is significant (> 150px), keyboard is likely visible
-    keyboardVisible.value = heightDifference > 150;
-
-    // Update original height when keyboard is hidden
-    if (!keyboardVisible.value) {
-      originalViewportHeight.value = currentHeight;
+function onChange(input) {
+  if (
+    current_word_index.value !== null &&
+    current_word_index.value >= 0 &&
+    current_word_index.value < words.value.length
+  ) {
+    // For individual key presses from CustomKeyboard, append the character
+    if (input.length === 1) {
+      words.value[current_word_index.value].text += input;
+      handleWordInput({
+        target: { value: words.value[current_word_index.value].text },
+      });
+    } else {
+      // For full text replacement (from other keyboards)
+      words.value[current_word_index.value].text = input;
+      handleWordInput({ target: { value: input } });
     }
-  };
+  }
+  console.log("Input changed", input);
 
-  window.addEventListener("resize", checkKeyboard);
-  window.addEventListener("orientationchange", () => {
-    // Reset on orientation change
-    setTimeout(() => {
-      originalViewportHeight.value = window.innerHeight;
-      keyboardVisible.value = false;
-    }, 100);
+  // Refocus the current input after processing the key press
+  nextTick(() => {
+    if (
+      current_word_index.value !== null &&
+      current_word_index.value >= 0 &&
+      current_word_index.value < words.value.length &&
+      word_refs.value[current_word_index.value]
+    ) {
+      word_refs.value[current_word_index.value].focus();
+    }
   });
+}
+
+function onKeyPress(button) {
+  console.log("Button pressed", button);
+
+  // Handle special keys
+  if (button === "{space}") {
+    if (
+      current_word_index.value !== null &&
+      current_word_index.value >= 0 &&
+      current_word_index.value < words.value.length
+    ) {
+      const inputElement = word_refs.value[current_word_index.value];
+      if (inputElement) {
+        const start = inputElement.selectionStart || 0;
+        const end = inputElement.selectionEnd || 0;
+        const currentText = words.value[current_word_index.value].text;
+
+        // Insert space at cursor position
+        const newText =
+          currentText.slice(0, start) + " " + currentText.slice(end);
+        words.value[current_word_index.value].text = newText;
+
+        // Update cursor position after the space
+        nextTick(() => {
+          if (inputElement) {
+            const newCursorPos = start + 1;
+            inputElement.selectionStart = newCursorPos;
+            inputElement.selectionEnd = newCursorPos;
+            inputElement.focus();
+          }
+        });
+
+        // Trigger input handling which will split words on spaces
+        handleWordInput({
+          target: { value: words.value[current_word_index.value].text },
+        });
+      }
+    }
+  } else if (button === "{bksp}") {
+    if (
+      current_word_index.value !== null &&
+      current_word_index.value >= 0 &&
+      current_word_index.value < words.value.length
+    ) {
+      const inputElement = word_refs.value[current_word_index.value];
+      if (inputElement) {
+        const start = inputElement.selectionStart || 0;
+        const end = inputElement.selectionEnd || 0;
+        const currentText = words.value[current_word_index.value].text;
+
+        if (start !== end) {
+          // Text is selected, remove selection
+          const newText = currentText.slice(0, start) + currentText.slice(end);
+          words.value[current_word_index.value].text = newText;
+
+          nextTick(() => {
+            if (inputElement) {
+              inputElement.selectionStart = start;
+              inputElement.selectionEnd = start;
+              inputElement.focus();
+            }
+          });
+        } else if (start > 0) {
+          // No selection, remove character before cursor
+          const newText =
+            currentText.slice(0, start - 1) + currentText.slice(start);
+          words.value[current_word_index.value].text = newText;
+
+          nextTick(() => {
+            if (inputElement) {
+              const newCursorPos = start - 1;
+              inputElement.selectionStart = newCursorPos;
+              inputElement.selectionEnd = newCursorPos;
+              inputElement.focus();
+            }
+          });
+        } else {
+          // At beginning of word, merge with previous word if it exists
+          const prevIdx = current_word_index.value - 1;
+          if (prevIdx >= 0) {
+            const prevValue = words.value[prevIdx].text;
+            words.value[prevIdx] = {
+              id: words.value[prevIdx].id,
+              text: prevValue + currentText,
+            };
+            words.value.splice(current_word_index.value, 1);
+            current_word_index.value = prevIdx;
+            nextTick(() => {
+              word_refs.value[prevIdx]?.focus();
+              if (word_refs.value[prevIdx]) {
+                word_refs.value[prevIdx].selectionStart = prevValue.length;
+                word_refs.value[prevIdx].selectionEnd = prevValue.length;
+              }
+            });
+          }
+        }
+      }
+    }
+  } else if (button === "{shift}") {
+    // Toggle caps lock
+    isCapsLock.value = !isCapsLock.value;
+  } else if (button === "{translate}") {
+    toggleTranslateMode();
+  } else if (button === "{enter}") {
+    if (translateMode.value) {
+      // In translate mode, accept the translation but stay in translate mode
+      if (wordsToTranslate.value.trim()) {
+        translateAndAppendWords().then(() => {
+          checkSentence();
+          translateFullSentence();
+        });
+        // Don't exit translate mode - stay in translate mode to continue translating
+      }
+      // If no words to translate, do nothing (stay in translate mode)
+    }
+    // In normal mode, Enter doesn't do anything special
+  } else {
+    // Handle regular letter keys - insert at cursor position
+    if (
+      current_word_index.value !== null &&
+      current_word_index.value >= 0 &&
+      current_word_index.value < words.value.length
+    ) {
+      const inputElement = word_refs.value[current_word_index.value];
+      if (inputElement) {
+        const start = inputElement.selectionStart || 0;
+        const end = inputElement.selectionEnd || 0;
+        const currentText = words.value[current_word_index.value].text;
+
+        // Insert the character at cursor position (apply caps lock if active)
+        const charToInsert = isCapsLock.value ? button.toUpperCase() : button;
+        const newText =
+          currentText.slice(0, start) + charToInsert + currentText.slice(end);
+        words.value[current_word_index.value].text = newText;
+
+        // Update cursor position
+        nextTick(() => {
+          if (inputElement) {
+            const newCursorPos = start + charToInsert.length;
+            inputElement.selectionStart = newCursorPos;
+            inputElement.selectionEnd = newCursorPos;
+            inputElement.focus();
+          }
+        });
+
+        console.log(
+          "Updated word:",
+          words.value[current_word_index.value].text
+        );
+        handleWordInput({
+          target: { value: words.value[current_word_index.value].text },
+        });
+      }
+    }
+  }
+
+  // Individual key handlers handle their own focus and cursor positioning
 }
 
 function generateWordId() {
   return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+}
+
+function refocusCurrentInput() {
+  // Refocus the current input when keyboard is clicked
+  nextTick(() => {
+    if (
+      current_word_index.value !== null &&
+      current_word_index.value >= 0 &&
+      current_word_index.value < words.value.length &&
+      word_refs.value[current_word_index.value]
+    ) {
+      word_refs.value[current_word_index.value].focus();
+    }
+  });
 }
 
 function clearAllText() {
@@ -591,10 +796,9 @@ function handleWordMouseDown(event, word, idx) {
   selected_word_ref.value = word_refs.value[idx];
 }
 
-function handleWordFocus(idx) {
-  current_word_index.value = idx;
-  // The VirtualKeyboard component will automatically update via the currentInputValue prop
-}
+// function handleTranslateBlur() {
+//   translateInputFocused.value = false;
+// }
 
 function handleWordInput(event) {
   const currentIdx = current_word_index.value;
@@ -656,20 +860,89 @@ async function toggleTranslateMode() {
       await translateFullSentence();
       isTranslatingMobile.value = false;
     } else {
+      // Exit translate mode without adding words - just clear translate input
       translateMode.value = false;
+      translateInputFocused.value = false;
+      wordsToTranslate.value = "";
+
+      // Restore focus to previous word input
+      if (
+        previousWordIndex.value !== null &&
+        previousWordIndex.value >= 0 &&
+        previousWordIndex.value < words.value.length
+      ) {
+        current_word_index.value = previousWordIndex.value;
+        nextTick(() => {
+          if (word_refs.value[previousWordIndex.value]) {
+            word_refs.value[previousWordIndex.value].focus();
+            if (previousCursorPosition.value !== null) {
+              word_refs.value[previousWordIndex.value].selectionStart =
+                previousCursorPosition.value;
+              word_refs.value[previousWordIndex.value].selectionEnd =
+                previousCursorPosition.value;
+            }
+          }
+        });
+      }
+      // Keep existing words, don't reset them
     }
   } else {
     // Enter translate mode: like pressing Tab
-    words.value = words.value.filter((word) => word.text.trim() !== "");
+    // Save current focus state before entering translate mode
+    const wasInEmptyWord =
+      current_word_index.value !== null &&
+      current_word_index.value >= 0 &&
+      current_word_index.value < words.value.length &&
+      !words.value[current_word_index.value].text.trim();
 
-    // Only allow entering translate mode if there are actual words written
+    previousWordIndex.value = current_word_index.value;
     if (
-      words.value.length === 0 ||
-      (words.value.length === 1 && !words.value[0].text.trim())
+      current_word_index.value !== null &&
+      word_refs.value[current_word_index.value]
     ) {
-      return; // Don't enter translate mode if no words are written
+      previousCursorPosition.value =
+        word_refs.value[current_word_index.value].selectionStart;
     }
 
+    words.value = words.value.filter((word) => word.text.trim() !== "");
+
+    // If we were in an empty word, add it back and adjust the saved index
+    if (wasInEmptyWord && words.value.length === 0) {
+      words.value.push({ id: "first", text: "" });
+      previousWordIndex.value = 0;
+    } else if (wasInEmptyWord) {
+      // Add empty word at the end and update the saved index
+      words.value.push({ id: generateWordId(), text: "" });
+      previousWordIndex.value = words.value.length - 1;
+    }
+
+    // If all words were empty, add back one empty string
+    if (words.value.length === 0) {
+      words.value.push({ id: "first", text: "" });
+    }
+
+    // If current word has text, create a new empty word and focus on it
+    const currentIdx = current_word_index.value;
+    if (
+      currentIdx !== null &&
+      currentIdx >= 0 &&
+      currentIdx < words.value.length
+    ) {
+      const currentWord = words.value[currentIdx];
+      if (currentWord && currentWord.text.trim() !== "") {
+        // Current word has text, create a new empty word
+        words.value.splice(currentIdx + 1, 0, {
+          id: generateWordId(),
+          text: "",
+        });
+        current_word_index.value = currentIdx + 1;
+        nextTick(() => {
+          word_refs.value[currentIdx + 1]?.focus();
+        });
+      }
+    }
+
+    // Allow entering translate mode even with no words written
     translateMode.value = true;
     nextTick(() => {
       translate_input_ref.value?.focus();
@@ -854,6 +1127,18 @@ function deleteWord(wordIndex) {
   if (words.value.length === 0) {
     words.value.push({ id: "first", text: "" });
   }
+
+  // Adjust current_word_index after deletion
+  if (current_word_index.value !== null) {
+    if (wordIndex === current_word_index.value) {
+      // Deleted the current word, move to previous or null
+      current_word_index.value = wordIndex > 0 ? wordIndex - 1 : null;
+    } else if (wordIndex < current_word_index.value) {
+      // Deleted a word before current, shift index down
+      current_word_index.value--;
+    }
+  }
+
   hideContextMenu();
 
   // Trigger checks after deletion
@@ -968,6 +1253,10 @@ async function translateAndAppendWords() {
           }
         });
       }
+
+      // Clear previous position since we've successfully added words
+      previousWordIndex.value = null;
+      previousCursorPosition.value = null;
     }
   } catch (e) {
     console.error("Translation failed:", e);
@@ -978,6 +1267,7 @@ async function translateAndAppendWords() {
   // Clear translate input and exit translate mode
   wordsToTranslate.value = "";
   translateMode.value = false;
+  translateInputFocused.value = false;
 }
 
 async function handleTranslateKeydown(e) {
@@ -991,6 +1281,7 @@ async function handleTranslateKeydown(e) {
       await translateFullSentence();
     } else {
       translateMode.value = false;
+      translateInputFocused.value = false;
     }
     return;
   }
