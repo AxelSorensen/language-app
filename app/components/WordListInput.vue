@@ -413,6 +413,8 @@ function handleSpacebar(idx) {
     translateFullSentence();
   });
 }
+
+function handleWordKeydown(e, idx) {
   // Handle Tab key - toggle translate mode
   if (e.key === "Tab") {
     e.preventDefault();
