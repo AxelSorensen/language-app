@@ -1,11 +1,11 @@
 <template>
-  <div class="max-w-[800px] relative overflow-hidden">
+  <div class="max-w-[800px] relative">
     <div
       class="flex flex-row flex-wrap justify-center items-center text-2xl font-sans"
     >
       <template v-for="(word, idx) in words" :key="idx">
         <SimpleTooltip
-          :enabled="!selected_word_index"
+          :enabled="selected_word_index === null || selected_word_index !== idx"
           :text="getTooltipText(word.text.trim(), idx)"
           :type="getTooltipType(idx)"
           :explanation="getExplanationText(idx)"
@@ -188,7 +188,11 @@
     <!-- Mobile Translate Mode Button -->
     <button
       v-if="!isTranslatingMobile"
-      class="md:hidden fixed bottom-4 left-4 right-4 px-4 py-3 bg-purple-100 text-purple-700 text-base font-semibold hover:bg-purple-200 transition-colors rounded-lg border border-purple-300 flex items-center justify-center gap-2 min-h-12"
+      class="md:hidden transition-all duration-300"
+      :class="[
+        'fixed px-4 py-3 bg-purple-100 text-purple-700 text-base font-semibold hover:bg-purple-200 transition-colors rounded-lg border border-purple-300 flex items-center justify-center gap-2 min-h-12',
+        keyboardVisible ? 'top-4 left-4 right-4' : 'bottom-4 left-4 right-4',
+      ]"
       @click="toggleTranslateMode"
     >
       <svg
@@ -270,13 +274,8 @@ const currentTopic = ref("");
 const isDiceAnimating = ref(false);
 const isGeneratingTopic = ref(false);
 const isTranslatingMobile = ref(false);
-
-const isMobile = computed(() => {
-  if (process.client) {
-    return window.innerWidth < 768; // md breakpoint in Tailwind
-  }
-  return false;
-});
+const keyboardVisible = ref(false);
+const originalViewportHeight = ref(0);
 
 const highlightedWordIndices = computed(() => {
   if (!sentenceErrors.value?.wrong_text) return new Set();
@@ -306,6 +305,33 @@ const highlightedWordIndices = computed(() => {
 
   return highlighted;
 });
+
+// Keyboard detection for mobile
+if (process.client) {
+  originalViewportHeight.value = window.innerHeight;
+
+  const checkKeyboard = () => {
+    const currentHeight = window.innerHeight;
+    const heightDifference = originalViewportHeight.value - currentHeight;
+
+    // If height difference is significant (> 150px), keyboard is likely visible
+    keyboardVisible.value = heightDifference > 150;
+
+    // Update original height when keyboard is hidden
+    if (!keyboardVisible.value) {
+      originalViewportHeight.value = currentHeight;
+    }
+  };
+
+  window.addEventListener("resize", checkKeyboard);
+  window.addEventListener("orientationchange", () => {
+    // Reset on orientation change
+    setTimeout(() => {
+      originalViewportHeight.value = window.innerHeight;
+      keyboardVisible.value = false;
+    }, 100);
+  });
+}
 
 function generateWordId() {
   return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
@@ -401,8 +427,8 @@ async function checkSentence() {
 }
 
 function handleWordKeydown(e, idx) {
-  // Handle Tab key - toggle translate mode (desktop only)
-  if (e.key === "Tab" && !isMobile.value) {
+  // Handle Tab key - toggle translate mode
+  if (e.key === "Tab") {
     e.preventDefault();
     // Remove empty strings from words array
     words.value = words.value.filter((word) => word.text.trim() !== "");
@@ -410,6 +436,16 @@ function handleWordKeydown(e, idx) {
     if (words.value.length === 0) {
       words.value.push({ id: "first", text: "" });
     }
+
+    // Only allow entering translate mode if there are actual words written
+    if (
+      !translateMode.value &&
+      words.value.length === 1 &&
+      !words.value[0].text.trim()
+    ) {
+      return; // Don't enter translate mode if no words are written
+    }
+
     translateMode.value = !translateMode.value;
     if (translateMode.value) {
       // Focus the translate input when entering translate mode
@@ -546,9 +582,15 @@ async function toggleTranslateMode() {
   } else {
     // Enter translate mode: like pressing Tab
     words.value = words.value.filter((word) => word.text.trim() !== "");
-    if (words.value.length === 0) {
-      words.value.push({ id: "first", text: "" });
+
+    // Only allow entering translate mode if there are actual words written
+    if (
+      words.value.length === 0 ||
+      (words.value.length === 1 && !words.value[0].text.trim())
+    ) {
+      return; // Don't enter translate mode if no words are written
     }
+
     translateMode.value = true;
     nextTick(() => {
       translate_input_ref.value?.focus();
@@ -860,8 +902,8 @@ async function translateAndAppendWords() {
 }
 
 async function handleTranslateKeydown(e) {
-  // Handle Tab key to exit translate mode and translate words
-  if (e.key === "Tab") {
+  // Handle Tab or Enter key to exit translate mode and translate words
+  if (e.key === "Tab" || e.key === "Enter") {
     e.preventDefault();
     if (wordsToTranslate.value.trim()) {
       await translateAndAppendWords();
