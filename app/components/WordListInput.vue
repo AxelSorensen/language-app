@@ -389,7 +389,12 @@ function handleWordKeydown(e, idx) {
     return;
   }
 
-  if (e.key === " " || e.key === "Enter") {
+  if (
+    e.key == " " ||
+    e.code == "Space" ||
+    e.keyCode == 32 ||
+    e.key === "Enter"
+  ) {
     if (translateMode.value) {
       // In translate mode, allow spaces and enters normally
       return;
