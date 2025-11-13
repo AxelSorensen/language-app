@@ -28,7 +28,7 @@
                 current_word_index = null;
               }
             "
-            @keydown="handleWordKeydown($event, idx)"
+            @keypress="handleWordKeydown($event, idx)"
             :class="[
               'mr-1 outline-none border-none field-sizing-content transition-all duration-200',
               output &&
@@ -60,7 +60,7 @@
         ]"
         placeholder="words to translate..."
         v-model="wordsToTranslate"
-        @keydown="handleTranslateKeydown"
+        @keypress="handleTranslateKeydown"
       />
     </div>
 
