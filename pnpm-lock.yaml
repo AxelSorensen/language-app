@@ -23,6 +23,9 @@ importers:
       openai:
         specifier: ^6.8.0
         version: 6.8.0(ws@8.18.3)
+      simple-keyboard:
+        specifier: ^3.8.89
+        version: 3.8.89
       tailwindcss:
         specifier: ^4.1.16
         version: 4.1.16
@@ -2820,6 +2823,9 @@ packages:
 
   simple-git@3.30.0:
     resolution: {integrity: sha512-q6lxyDsCmEal/MEGhP1aVyQ3oxnagGlBDOVSIB4XUVLl1iZh0Pah6ebC9V4xBap/RfgP2WlI8EKs0WS0rMEJHg==}
+
+  simple-keyboard@3.8.89:
+    resolution: {integrity: sha512-SrGZZuxNOobkm9Wk7eg69QPav5LMJ/JNp8aG40hujTGIjH7WqdwESMSydbxm+YkNYoK0x2ZLcd1W3Z/ur+hx6w==}
 
   sirv@3.0.2:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
@@ -6447,6 +6453,8 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+
+  simple-keyboard@3.8.89: {}
 
   sirv@3.0.2:
     dependencies:

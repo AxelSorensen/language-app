@@ -1,153 +1,112 @@
 <template>
-  <div class="max-w-[800px] p-4 flex flex-col justify-center relative">
-    <!-- Reset Button -->
-    <button
-      v-if="hasText"
-      @click="clearAllText"
-      class="fixed top-4 right-4 cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-50 flex items-center gap-2"
-      title="Clear all text"
-    >
-      <svg
-        class="w-4 h-4 text-gray-600"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M6 18L18 6M6 6l12 12"
-        ></path>
-      </svg>
-      <span class="text-sm font-medium text-gray-700">Reset</span>
-    </button>
-
-    <div
-      class="flex flex-row flex-wrap justify-center items-center text-2xl font-sans"
-    >
-      <template v-for="(word, idx) in words" :key="idx">
-        <SimpleTooltip
-          :enabled="!selected_word_index"
-          :text="getTooltipText(word.text.trim(), idx)"
-          :type="getTooltipType(idx)"
-          :explanation="getExplanationText(idx)"
-          @applyCorrection="applyCorrection(idx)"
-          @deleteWord="deleteWord(idx)"
-        >
-          <input
-            ref="word_refs"
-            :placeholder="
-              idx === 0 && words.length === 1 ? 'Start writing...' : ''
-            "
-            v-model="words[idx].text"
-            autocapitalize="off"
-            @input="handleWordInput($event)"
-            @keydown="handleWordKeydown($event, idx)"
-            @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
-            @contextmenu="handleRightClick($event, idx)"
-            @focus="current_word_index = idx"
-            @blur="
-              () => {
-                handleWordBlur();
-                current_word_index = null;
-              }
-            "
-            :class="[
-              'mr-1 outline-none border-none field-sizing-content  transition-all duration-200',
-              output &&
-              output.corrections &&
-              words[idx] &&
-              output.corrections[word.id] &&
-              output.corrections[word.id].correction
-                ? output.corrections[word.id].correction === 'null'
-                  ? 'text-red-600'
-                  : 'text-amber-500'
-                : 'text-gray-800',
-              idx === selected_word_index ? 'bg-blue-100 rounded px-1' : '',
-              pendingWords.has(word.id) ? 'animate-pulse' : '',
-              highlightedWordIndices.has(idx)
-                ? 'underline decoration-dashed decoration-gray-400 decoration-1 underline-offset-4'
-                : '',
-            ]"
-          />
-        </SimpleTooltip>
-      </template>
-
-      <!-- Translate Input -->
-      <input
-        v-if="translateMode"
-        ref="translate_input_ref"
-        class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans"
-        :class="[
-          isTranslating ? ' animate-pulse text-purple-500' : 'text-gray-500',
-        ]"
-        placeholder="words to translate..."
-        v-model="wordsToTranslate"
-        @keydown="handleTranslateKeydown($event)"
-      />
-    </div>
-
-    <!-- Writing Topic CTA - Full width under input -->
-    <div
-      v-if="!words[0]?.text"
-      class="mt-6 text-center transition-opacity duration-300"
-      :class="
-        words.length === 1 && !words[0]?.text
-          ? 'opacity-100'
-          : 'opacity-0 pointer-events-none'
-      "
-    >
-      <p class="text-gray-600 mb-4">Don't know what to write?</p>
-
-      <!-- Initial Roll the Dice CTA -->
+  <div class="grid grid-rows-[300,1fr] grid-cols-1 h-screen w-full">
+    <div class="max-w-[800px] p-4 flex flex-col justify-center relative">
+      <!-- Reset Button -->
       <button
-        v-if="!currentTopic"
-        @click="pickRandomTopic"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-700 transition-colors"
+        v-if="hasText"
+        @click="clearAllText"
+        class="fixed top-4 right-4 cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-50 flex items-center gap-2"
+        title="Clear all text"
       >
         <svg
-          class="w-5 h-5"
+          class="w-4 h-4 text-gray-600"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <rect
-            x="2"
-            y="2"
-            width="20"
-            height="20"
-            rx="3"
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
             stroke-width="2"
-            fill="currentColor"
-            fill-opacity="0.1"
-          />
-          <circle cx="6" cy="6" r="1.5" fill="currentColor" />
-          <circle cx="18" cy="6" r="1.5" fill="currentColor" />
-          <circle cx="6" cy="18" r="1.5" fill="currentColor" />
-          <circle cx="18" cy="18" r="1.5" fill="currentColor" />
-          <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
         </svg>
-        Roll the dice
+        <span class="text-sm font-medium text-gray-700">Reset</span>
       </button>
 
-      <!-- Topic with small dice button -->
-      <div v-else class="mt-4 flex items-center justify-center gap-3">
-        <p
-          v-if="isGeneratingTopic"
-          class="text-xl font-semibold text-gray-500 animate-pulse"
-        >
-          Generating...
-        </p>
-        <p v-else class="text-xl font-semibold text-gray-800">
-          {{ currentTopic }}
-        </p>
+      <div
+        class="flex flex-row flex-wrap justify-center items-center text-2xl font-sans"
+      >
+        <template v-for="(word, idx) in words" :key="idx">
+          <SimpleTooltip
+            :enabled="!selected_word_index"
+            :text="getTooltipText(word.text.trim(), idx)"
+            :type="getTooltipType(idx)"
+            :explanation="getExplanationText(idx)"
+            @applyCorrection="applyCorrection(idx)"
+            @deleteWord="deleteWord(idx)"
+          >
+            <input
+              ref="word_refs"
+              :placeholder="
+                idx === 0 && words.length === 1 ? 'Start writing...' : ''
+              "
+              v-model="words[idx].text"
+              autocapitalize="off"
+              @input="handleWordInput($event)"
+              @keydown="handleWordKeydown($event, idx)"
+              @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
+              @contextmenu="handleRightClick($event, idx)"
+              @focus="handleWordFocus(idx)"
+              @blur="
+                () => {
+                  current_word_index = null;
+                }
+              "
+              :class="[
+                'mr-1 outline-none border-none field-sizing-content  transition-all duration-200',
+                output &&
+                output.corrections &&
+                words[idx] &&
+                output.corrections[word.id] &&
+                output.corrections[word.id].correction
+                  ? output.corrections[word.id].correction === 'null'
+                    ? 'text-red-600'
+                    : 'text-amber-500'
+                  : 'text-gray-800',
+                idx === selected_word_index ? 'bg-blue-100 rounded px-1' : '',
+                pendingWords.has(word.id) ? 'animate-pulse' : '',
+                highlightedWordIndices.has(idx)
+                  ? 'underline decoration-dashed decoration-gray-400 decoration-1 underline-offset-4'
+                  : '',
+              ]"
+            />
+          </SimpleTooltip>
+        </template>
+
+        <!-- Translate Input -->
+        <input
+          v-if="translateMode"
+          ref="translate_input_ref"
+          class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans"
+          :class="[
+            isTranslating ? ' animate-pulse text-purple-500' : 'text-gray-500',
+          ]"
+          placeholder="words to translate..."
+          v-model="wordsToTranslate"
+          @keydown="handleTranslateKeydown($event)"
+        />
+      </div>
+
+      <!-- Writing Topic CTA - Full width under input -->
+      <div
+        v-if="!words[0]?.text"
+        class="mt-6 text-center transition-opacity duration-300"
+        :class="
+          words.length === 1 && !words[0]?.text
+            ? 'opacity-100'
+            : 'opacity-0 pointer-events-none'
+        "
+      >
+        <p class="text-gray-600 mb-4">Don't know what to write?</p>
+
+        <!-- Initial Roll the Dice CTA -->
         <button
+          v-if="!currentTopic"
           @click="pickRandomTopic"
-          class="shrink-0 p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-700 transition-colors"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-700 transition-colors"
         >
           <svg
-            :class="{ 'animate-spin': isDiceAnimating }"
             class="w-5 h-5"
             fill="none"
             stroke="currentColor"
@@ -169,72 +128,121 @@
             <circle cx="18" cy="18" r="1.5" fill="currentColor" />
             <circle cx="12" cy="12" r="1.5" fill="currentColor" />
           </svg>
+          Roll the dice
+        </button>
+
+        <!-- Topic with small dice button -->
+        <div v-else class="mt-4 flex items-center justify-center gap-3">
+          <p
+            v-if="isGeneratingTopic"
+            class="text-xl font-semibold text-gray-500 animate-pulse"
+          >
+            Generating...
+          </p>
+          <p v-else class="text-xl font-semibold text-gray-800">
+            {{ currentTopic }}
+          </p>
+          <button
+            @click="pickRandomTopic"
+            class="shrink-0 p-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-blue-700 transition-colors"
+          >
+            <svg
+              :class="{ 'animate-spin': isDiceAnimating }"
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <rect
+                x="2"
+                y="2"
+                width="20"
+                height="20"
+                rx="3"
+                stroke-width="2"
+                fill="currentColor"
+                fill-opacity="0.1"
+              />
+              <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+              <circle cx="18" cy="6" r="1.5" fill="currentColor" />
+              <circle cx="6" cy="18" r="1.5" fill="currentColor" />
+              <circle cx="18" cy="18" r="1.5" fill="currentColor" />
+              <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Full Translated Sentence Display -->
+      <div
+        v-if="fullTranslatedSentence"
+        class="mt-8 mb-2 text-lg text-gray-500"
+      >
+        {{ fullTranslatedSentence }}
+        <!-- Spinner -->
+        <Loader v-if="isTranslatingFullSentence" class="ml-2" />
+      </div>
+
+      <!-- Context Menu -->
+      <div
+        v-if="contextMenu.visible"
+        class="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg py-1 min-w-48"
+        :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+        @click.stop
+      >
+        <button
+          class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+          @click="selectWord(contextMenu.wordIndex)"
+        >
+          View Details
+        </button>
+        <button
+          class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+          @click="deleteWord(contextMenu.wordIndex)"
+        >
+          Delete Word
         </button>
       </div>
-    </div>
 
-    <!-- Full Translated Sentence Display -->
-    <div v-if="fullTranslatedSentence" class="mt-8 mb-2 text-lg text-gray-500">
-      {{ fullTranslatedSentence }}
-      <!-- Spinner -->
-      <Loader v-if="isTranslatingFullSentence" class="ml-2" />
-    </div>
+      <!-- Overlay to close context menu -->
+      <div
+        v-if="contextMenu.visible"
+        class="fixed inset-0 z-40"
+        @click="hideContextMenu"
+      ></div>
 
-    <!-- Context Menu -->
-    <div
-      v-if="contextMenu.visible"
-      class="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg py-1 min-w-48"
-      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
-      @click.stop
-    >
+      <!-- Mobile Translate Mode Button -->
       <button
-        class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-        @click="selectWord(contextMenu.wordIndex)"
+        v-if="!isTranslatingMobile && words[0]?.text"
+        class="md:hidden transition-all duration-300"
+        :class="[
+          'fixed px-4 py-3 bg-purple-100 text-purple-700 text-base font-semibold hover:bg-purple-200 transition-colors rounded-lg border border-purple-300 flex items-center justify-center gap-2 min-h-12',
+          keyboardVisible
+            ? 'bottom-4 left-4 right-4'
+            : 'bottom-4 left-4 right-4',
+        ]"
+        @click="toggleTranslateMode"
       >
-        View Details
+        <svg
+          class="w-4 h-4 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+          ></path>
+        </svg>
+        <span class="text-center leading-tight max-h-12 overflow-y-auto">{{
+          translateMode ? "Accept" : "Translate Mode"
+        }}</span>
       </button>
-      <button
-        class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-        @click="deleteWord(contextMenu.wordIndex)"
-      >
-        Delete Word
-      </button>
+
+      <!-- Virtual Keyboard - Bottom of screen when input is focused -->
     </div>
-
-    <!-- Overlay to close context menu -->
-    <div
-      v-if="contextMenu.visible"
-      class="fixed inset-0 z-40"
-      @click="hideContextMenu"
-    ></div>
-
-    <!-- Mobile Translate Mode Button -->
-    <button
-      v-if="!isTranslatingMobile && words[0]?.text"
-      class="md:hidden transition-all duration-300"
-      :class="[
-        'fixed px-4 py-3 bg-purple-100 text-purple-700 text-base font-semibold hover:bg-purple-200 transition-colors rounded-lg border border-purple-300 flex items-center justify-center gap-2 min-h-12',
-        keyboardVisible ? 'bottom-4 left-4 right-4' : 'bottom-4 left-4 right-4',
-      ]"
-      @click="toggleTranslateMode"
-    >
-      <svg
-        class="w-4 h-4 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
-        ></path>
-      </svg>
-      <span class="text-center leading-tight max-h-12 overflow-y-auto">{{
-        translateMode ? "Accept" : "Translate Mode"
-      }}</span>
-    </button>
   </div>
 </template>
 
@@ -339,6 +347,13 @@ const highlightedWordIndices = computed(() => {
 
 const hasText = computed(() => {
   return words.value.some((word) => word.text.trim() !== "");
+});
+
+const currentInputValue = computed(() => {
+  if (current_word_index.value !== null) {
+    return words.value[current_word_index.value].text;
+  }
+  return "";
 });
 
 // Keyboard detection for mobile
@@ -576,16 +591,12 @@ function handleWordMouseDown(event, word, idx) {
   selected_word_ref.value = word_refs.value[idx];
 }
 
-function handleWordBlur() {
-  if (checkTimeout.value) {
-    clearTimeout(checkTimeout.value);
-    checkTimeout.value = null;
-  }
-  selected_word_ref.value = null;
+function handleWordFocus(idx) {
+  current_word_index.value = idx;
+  // The VirtualKeyboard component will automatically update via the currentInputValue prop
 }
 
 function handleWordInput(event) {
-  console.log("Input event:", event);
   const currentIdx = current_word_index.value;
 
   // Handle spaces immediately when they appear in input
