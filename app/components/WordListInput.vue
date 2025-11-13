@@ -82,7 +82,9 @@
           ref="translate_input_ref"
           class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans"
           :class="[
-            (translateMode || isTranslatingMobile) ? 'text-purple-600' : 'text-gray-500',
+            translateMode || isTranslatingMobile
+              ? 'text-purple-600'
+              : 'text-gray-500',
             isTranslatingMobile ? 'animate-pulse' : '',
           ]"
           placeholder="words to translate..."
@@ -887,17 +889,17 @@ async function toggleTranslateMode() {
     // Exit translate mode immediately (don't wait for translation)
     translateMode.value = false;
     translateInputFocused.value = false;
-    
+
     // Accept: like pressing Tab in translate mode
     if (wordsToTranslate.value.trim()) {
       isTranslatingMobile.value = true;
       await translateAndAppendWords();
       isTranslatingMobile.value = false;
-      
+
       // Now exit translate mode and clear the input
       translateMode.value = false;
       wordsToTranslate.value = "";
-      
+
       await checkSentence();
       await translateFullSentence();
     } else {
