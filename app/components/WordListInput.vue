@@ -28,7 +28,6 @@
                 current_word_index = null;
               }
             "
-            @keypress="handleWordKeydown($event, idx)"
             :class="[
               'mr-1 outline-none border-none field-sizing-content transition-all duration-200',
               output &&
@@ -60,7 +59,6 @@
         ]"
         placeholder="words to translate..."
         v-model="wordsToTranslate"
-        @keypress="handleTranslateKeydown"
       />
     </div>
 
@@ -274,6 +272,26 @@ const highlightedWordIndices = computed(() => {
   return highlighted;
 });
 
+function setupEventListeners() {
+  // Set up event listeners for word inputs
+  word_refs.value.forEach((input, idx) => {
+    if (input) {
+      input.addEventListener('keydown', (e) => handleWordKeydown(e, idx));
+    }
+  });
+  
+  // Set up event listener for translate input
+  if (translate_input_ref.value) {
+    translate_input_ref.value.addEventListener('keydown', handleTranslateKeydown);
+  }
+}
+
+onMounted(() => {
+  nextTick(() => {
+    setupEventListeners();
+  });
+});
+
 function generateWordId() {
   return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
 }
@@ -357,6 +375,13 @@ function handleWordKeydown(e, idx) {
       // Focus the translate input when entering translate mode
       nextTick(() => {
         translate_input_ref.value?.focus();
+        // Set up event listeners after mode change
+        setupEventListeners();
+      });
+    } else {
+      // Set up event listeners after mode change
+      nextTick(() => {
+        setupEventListeners();
       });
     }
     return;
@@ -384,6 +409,8 @@ function handleWordKeydown(e, idx) {
           word_refs.value[prevIdx].selectionStart = prevValue.length;
           word_refs.value[prevIdx].selectionEnd = prevValue.length;
         }
+        // Set up event listeners after word deletion
+        setupEventListeners();
       });
     }
     return;
@@ -413,6 +440,8 @@ function handleWordKeydown(e, idx) {
         word_refs.value[idx + 1].selectionStart = 0;
         word_refs.value[idx + 1].selectionEnd = 0;
       }
+      // Set up event listeners for the new input
+      setupEventListeners();
     });
 
     // Check the entire sentence for errors
@@ -682,6 +711,11 @@ function deleteWord(wordIndex) {
     words.value.push({ id: "first", text: "" });
   }
   hideContextMenu();
+  
+  // Set up event listeners after word deletion
+  nextTick(() => {
+    setupEventListeners();
+  });
 
   // Trigger checks after deletion
   if (checkTimeout.value) clearTimeout(checkTimeout.value);
@@ -781,6 +815,11 @@ async function translateAndAppendWords() {
 
       // Now add the words to the UI
       words.value.push(...tempWords);
+
+      // Set up event listeners for new words
+      nextTick(() => {
+        setupEventListeners();
+      });
 
       // Focus the last added word and position cursor at the end
       if (translatedWords.length > 0) {
