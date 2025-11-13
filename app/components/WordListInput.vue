@@ -41,6 +41,7 @@
             @deleteWord="deleteWord(idx)"
           >
             <input
+              inputmode="none"
               ref="word_refs"
               :placeholder="
                 idx === 0 && words.length === 1 ? 'Start writing...' : ''
@@ -76,6 +77,7 @@
 
         <!-- Translate Input -->
         <input
+          inputmode="none"
           v-if="translateMode"
           ref="translate_input_ref"
           class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans"
