@@ -1,5 +1,28 @@
 <template>
   <div class="max-w-[800px] p-4 flex flex-col justify-center relative">
+    <!-- Reset Button -->
+    <button
+      v-if="hasText"
+      @click="clearAllText"
+      class="fixed top-4 right-4 cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-50 flex items-center gap-2"
+      title="Clear all text"
+    >
+      <svg
+        class="w-4 h-4 text-gray-600"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M6 18L18 6M6 6l12 12"
+        ></path>
+      </svg>
+      <span class="text-sm font-medium text-gray-700">Reset</span>
+    </button>
+
     <div
       class="flex flex-row flex-wrap justify-center items-center text-2xl font-sans"
     >
@@ -258,17 +281,25 @@ const isTranslatingFullSentence = ref(false);
 const pendingWords = ref(new Set());
 const currentSelection = ref(null);
 const writingTopics = ref([
-  "My family and I",
-  "My daily routine",
-  "My favorite foods",
-  "My hobbies and interests",
-  "My home and room",
-  "My best friend",
-  "What I like to do on weekends",
-  "My favorite season",
-  "My school or work",
-  "My favorite animal",
-  "My last vacation or trip",
+  "What was your most memorable experience at work?",
+  "Describe your dream vacation destination and why you want to go there",
+  "What was your favorite meal and the story behind it?",
+  "Describe a special moment you shared with your family",
+  "How do you like to spend your weekends?",
+  "Describe the place where you live and what you like about it",
+  "What was a time when you cooked something special?",
+  "Describe your favorite hobby and how you got started with it",
+  "What was a concert or music experience that moved you?",
+  "Describe your favorite shopping experience",
+  "How does your exercise routine make you feel?",
+  "Describe a fun outing you had with friends recently",
+  "What was a TV show or movie that had a big impact on you?",
+  "Describe your most memorable vacation and what made it special",
+  "What was a book that changed your perspective?",
+  "Describe what you love most about your city",
+  "How do you like to unwind after work?",
+  "Describe your favorite restaurant and what makes it special",
+  "What was something you recently bought and why you chose it?",
 ]);
 const currentTopic = ref("");
 const isDiceAnimating = ref(false);
@@ -306,6 +337,10 @@ const highlightedWordIndices = computed(() => {
   return highlighted;
 });
 
+const hasText = computed(() => {
+  return words.value.some((word) => word.text.trim() !== "");
+});
+
 // Keyboard detection for mobile
 if (process.client) {
   originalViewportHeight.value = window.innerHeight;
@@ -335,6 +370,16 @@ if (process.client) {
 
 function generateWordId() {
   return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+}
+
+function clearAllText() {
+  words.value = [{ id: "first", text: "" }];
+  output.value = { corrections: {} };
+  sentenceErrors.value = null;
+  fullTranslatedSentence.value = "";
+  translateMode.value = false;
+  wordsToTranslate.value = "";
+  currentTopic.value = "";
 }
 
 function handleSpace(idx) {
