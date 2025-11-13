@@ -18,7 +18,8 @@
               idx === 0 && words.length === 1 ? 'Start writing...' : ''
             "
             v-model="words[idx].text"
-            @input="handleWordInput(idx)"
+            @input="handleWordInput"
+            @keydown="handleWordKeydown($event, idx)"
             @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
             @contextmenu="handleRightClick($event, idx)"
             @focus="current_word_index = idx"
@@ -272,56 +273,33 @@ const highlightedWordIndices = computed(() => {
   return highlighted;
 });
 
-function setupEventListeners() {
-  // Set up general keydown listeners for word inputs (excluding space)
-  word_refs.value.forEach((input, idx) => {
-    if (input && !input.hasKeydownListener) {
-      const keydownHandler = (e) => {
-        // Skip spacebar - handled separately
-        if (e.key === " " || e.code === "Space" || e.keyCode === 32) return;
-        handleWordKeydown(e, idx);
-      };
-      input.addEventListener("keydown", keydownHandler);
-      input._keydownHandler = keydownHandler; // Store reference for cleanup
-      input.hasKeydownListener = true;
-    }
-
-    // Separate spacebar listener
-    if (input && !input.hasSpaceListener) {
-      const spaceHandler = (e) => {
-        if (e.key === " " || e.code === "Space" || e.keyCode === 32) {
-          if (translateMode.value) return; // Allow spaces in translate mode
-          e.preventDefault();
-          handleSpacebar(idx);
-        }
-      };
-      input.addEventListener("keydown", spaceHandler);
-      input._spaceHandler = spaceHandler;
-      input.hasSpaceListener = true;
-    }
-  });
-
-  // Set up event listener for translate input
-  if (
-    translate_input_ref.value &&
-    !translate_input_ref.value.hasKeydownListener
-  ) {
-    translate_input_ref.value.addEventListener(
-      "keydown",
-      handleTranslateKeydown
-    );
-    translate_input_ref.value.hasKeydownListener = true;
-  }
-}
-
-onMounted(() => {
-  nextTick(() => {
-    setupEventListeners();
-  });
-});
-
 function generateWordId() {
   return "word-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+}
+
+function handleSpace(idx) {
+  if (translateMode.value) {
+    // In translate mode, allow spaces and enters normally
+    return;
+  }
+  checkWord(words.value[idx], idx);
+  // Always add a new word after the current one
+  words.value.splice(idx + 1, 0, { id: generateWordId(), text: "" });
+  nextTick(() => {
+    word_refs.value[idx + 1]?.focus();
+    if (word_refs.value[idx + 1]) {
+      word_refs.value[idx + 1].selectionStart = 0;
+      word_refs.value[idx + 1].selectionEnd = 0;
+    }
+  });
+  // Check the entire sentence for errors
+  nextTick(() => {
+    checkSentence();
+  });
+  // Translate the full sentence after adding word
+  nextTick(() => {
+    translateFullSentence();
+  });
 }
 
 async function checkWord(word, wordIndex) {
@@ -388,32 +366,6 @@ async function checkSentence() {
   }
 }
 
-function handleSpacebar(idx) {
-  checkWord(words.value[idx], idx);
-
-  // Always add a new word after the current one
-  words.value.splice(idx + 1, 0, { id: generateWordId(), text: "" });
-  nextTick(() => {
-    word_refs.value[idx + 1]?.focus();
-    if (word_refs.value[idx + 1]) {
-      word_refs.value[idx + 1].selectionStart = 0;
-      word_refs.value[idx + 1].selectionEnd = 0;
-    }
-    // Set up event listeners for the new input
-    setupEventListeners();
-  });
-
-  // Check the entire sentence for errors
-  nextTick(() => {
-    checkSentence();
-  });
-
-  // Translate the full sentence after adding word
-  nextTick(() => {
-    translateFullSentence();
-  });
-}
-
 function handleWordKeydown(e, idx) {
   // Handle Tab key - toggle translate mode
   if (e.key === "Tab") {
@@ -429,13 +381,6 @@ function handleWordKeydown(e, idx) {
       // Focus the translate input when entering translate mode
       nextTick(() => {
         translate_input_ref.value?.focus();
-        // Set up event listeners after mode change
-        setupEventListeners();
-      });
-    } else {
-      // Set up event listeners after mode change
-      nextTick(() => {
-        setupEventListeners();
       });
     }
     return;
@@ -463,45 +408,8 @@ function handleWordKeydown(e, idx) {
           word_refs.value[prevIdx].selectionStart = prevValue.length;
           word_refs.value[prevIdx].selectionEnd = prevValue.length;
         }
-        // Set up event listeners after word deletion
-        setupEventListeners();
       });
     }
-    return;
-  }
-
-  if (e.key === "Enter") {
-    if (translateMode.value) {
-      // In translate mode, allow enters normally
-      return;
-    }
-    e.preventDefault();
-
-    checkWord(words.value[idx], idx);
-
-    // Always update the current word with the text before cursor
-
-    // Always add a new word after the current one
-    words.value.splice(idx + 1, 0, { id: generateWordId(), text: "" });
-    nextTick(() => {
-      word_refs.value[idx + 1]?.focus();
-      if (word_refs.value[idx + 1]) {
-        word_refs.value[idx + 1].selectionStart = 0;
-        word_refs.value[idx + 1].selectionEnd = 0;
-      }
-      // Set up event listeners for the new input
-      setupEventListeners();
-    });
-
-    // Check the entire sentence for errors
-    nextTick(() => {
-      checkSentence();
-    });
-
-    // Translate the full sentence after adding word
-    nextTick(() => {
-      translateFullSentence();
-    });
     return;
   }
 
@@ -563,27 +471,30 @@ function handleWordBlur() {
   selected_word_ref.value = null;
 }
 
-function handleWordInput(idx) {
-  // This is now only used for regular input validation and checks
-  // Space handling is done in keydown event
-
+function handleWordInput() {
   if (checkTimeout.value) clearTimeout(checkTimeout.value);
   checkTimeout.value = setTimeout(() => {
+    const currentIdx = current_word_index.value;
+    if (currentIdx !== null && words.value[currentIdx].text.includes(" ")) {
+      const beforeSpace = words.value[currentIdx].text.split(" ")[0];
+      words.value[currentIdx].text = beforeSpace;
+      handleSpace(currentIdx);
+      return;
+    }
     // Check if all words are empty - if so, reset everything
     const allWordsEmpty = words.value.every((word) => !word.text.trim());
     if (allWordsEmpty) {
-      console.log("cleaning");
       output.value = { corrections: {} };
       sentenceErrors.value = null;
       fullTranslatedSentence.value = "";
       return;
     }
-
-    checkWord(words.value[current_word_index.value], current_word_index.value);
+    checkWord(words.value[currentIdx], currentIdx);
     checkSentence();
     translateFullSentence();
   }, 500);
 }
+
 function applyCorrection(idx) {
   // Check if this is a sentence correction
   if (
@@ -763,11 +674,6 @@ function deleteWord(wordIndex) {
   }
   hideContextMenu();
 
-  // Set up event listeners after word deletion
-  nextTick(() => {
-    setupEventListeners();
-  });
-
   // Trigger checks after deletion
   if (checkTimeout.value) clearTimeout(checkTimeout.value);
   checkTimeout.value = setTimeout(() => {
@@ -866,11 +772,6 @@ async function translateAndAppendWords() {
 
       // Now add the words to the UI
       words.value.push(...tempWords);
-
-      // Set up event listeners for new words
-      nextTick(() => {
-        setupEventListeners();
-      });
 
       // Focus the last added word and position cursor at the end
       if (translatedWords.length > 0) {
