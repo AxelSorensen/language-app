@@ -18,7 +18,7 @@
               idx === 0 && words.length === 1 ? 'Start writing...' : ''
             "
             v-model="words[idx].text"
-            @input="handleWordInput"
+            @input="handleWordInput(idx)"
             @mousedown="handleWordMouseDown($event, word.text.trim(), idx)"
             @contextmenu="handleRightClick($event, idx)"
             @focus="current_word_index = idx"
@@ -273,19 +273,44 @@ const highlightedWordIndices = computed(() => {
 });
 
 function setupEventListeners() {
-  // Set up event listeners for word inputs
+  // Set up general keydown listeners for word inputs (excluding space)
   word_refs.value.forEach((input, idx) => {
-    if (input) {
-      input.addEventListener("keydown", (e) => handleWordKeydown(e, idx));
+    if (input && !input.hasKeydownListener) {
+      const keydownHandler = (e) => {
+        // Skip spacebar - handled separately
+        if (e.key === " " || e.code === "Space" || e.keyCode === 32) return;
+        handleWordKeydown(e, idx);
+      };
+      input.addEventListener("keydown", keydownHandler);
+      input._keydownHandler = keydownHandler; // Store reference for cleanup
+      input.hasKeydownListener = true;
+    }
+
+    // Separate spacebar listener
+    if (input && !input.hasSpaceListener) {
+      const spaceHandler = (e) => {
+        if (e.key === " " || e.code === "Space" || e.keyCode === 32) {
+          if (translateMode.value) return; // Allow spaces in translate mode
+          e.preventDefault();
+          handleSpacebar(idx);
+        }
+      };
+      input.addEventListener("keydown", spaceHandler);
+      input._spaceHandler = spaceHandler;
+      input.hasSpaceListener = true;
     }
   });
 
   // Set up event listener for translate input
-  if (translate_input_ref.value) {
+  if (
+    translate_input_ref.value &&
+    !translate_input_ref.value.hasKeydownListener
+  ) {
     translate_input_ref.value.addEventListener(
       "keydown",
       handleTranslateKeydown
     );
+    translate_input_ref.value.hasKeydownListener = true;
   }
 }
 
@@ -363,7 +388,31 @@ async function checkSentence() {
   }
 }
 
-function handleWordKeydown(e, idx) {
+function handleSpacebar(idx) {
+  checkWord(words.value[idx], idx);
+
+  // Always add a new word after the current one
+  words.value.splice(idx + 1, 0, { id: generateWordId(), text: "" });
+  nextTick(() => {
+    word_refs.value[idx + 1]?.focus();
+    if (word_refs.value[idx + 1]) {
+      word_refs.value[idx + 1].selectionStart = 0;
+      word_refs.value[idx + 1].selectionEnd = 0;
+    }
+    // Set up event listeners for the new input
+    setupEventListeners();
+  });
+
+  // Check the entire sentence for errors
+  nextTick(() => {
+    checkSentence();
+  });
+
+  // Translate the full sentence after adding word
+  nextTick(() => {
+    translateFullSentence();
+  });
+}
   // Handle Tab key - toggle translate mode
   if (e.key === "Tab") {
     e.preventDefault();
@@ -419,14 +468,9 @@ function handleWordKeydown(e, idx) {
     return;
   }
 
-  if (
-    e.key == " " ||
-    e.code == "Space" ||
-    e.keyCode == 32 ||
-    e.key === "Enter"
-  ) {
+  if (e.key === "Enter") {
     if (translateMode.value) {
-      // In translate mode, allow spaces and enters normally
+      // In translate mode, allow enters normally
       return;
     }
     e.preventDefault();
@@ -517,7 +561,10 @@ function handleWordBlur() {
   selected_word_ref.value = null;
 }
 
-function handleWordInput() {
+function handleWordInput(idx) {
+  // This is now only used for regular input validation and checks
+  // Space handling is done in keydown event
+
   if (checkTimeout.value) clearTimeout(checkTimeout.value);
   checkTimeout.value = setTimeout(() => {
     // Check if all words are empty - if so, reset everything
@@ -535,7 +582,6 @@ function handleWordInput() {
     translateFullSentence();
   }, 500);
 }
-
 function applyCorrection(idx) {
   // Check if this is a sentence correction
   if (
