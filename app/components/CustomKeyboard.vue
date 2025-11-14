@@ -183,7 +183,22 @@
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          <!-- Translate icon when not translating -->
+          <!-- Checkmark icon when translate mode is active and text has been added -->
+          <svg
+            v-else-if="translateMode && hasAddedTextInTranslateMode"
+            class="h-6 w-6 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 13l4 4L19 7"
+            ></path>
+          </svg>
+          <!-- Translate icon otherwise -->
           <svg
             v-else
             class="h-6 w-6 shrink-0"
@@ -209,6 +224,27 @@
           style="margin: -4px; z-index: 10"
         ></div>
       </div>
+      <div class="relative flex-1">
+        <button
+          @focus.prevent
+          tabindex="-1"
+          :class="[
+            'keyboard-key w-full bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+            pressedKeys.has('.') ? 'bg-gray-200 pressed' : '',
+          ]"
+        >
+          .
+        </button>
+        <!-- Hitbox -->
+        <div
+          @touchstart.prevent="handleKeyDown('.')"
+          @mousedown="handleKeyDown('.')"
+          @touchend="handleKeyUp('.')"
+          @mouseup="handleKeyUp('.')"
+          class="absolute inset-0 opacity-0 rounded-md cursor-pointer"
+          style="margin: -4px; z-index: 10"
+        ></div>
+      </div>
       <div class="relative flex-5">
         <button
           @focus.prevent
@@ -230,7 +266,28 @@
           style="margin: -4px; z-index: 10"
         ></div>
       </div>
-      <div class="relative flex-[1.8]">
+      <div class="relative flex-1">
+        <button
+          @focus.prevent
+          tabindex="-1"
+          :class="[
+            'keyboard-key w-full bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+            pressedKeys.has(',') ? 'bg-gray-200 pressed' : '',
+          ]"
+        >
+          ,
+        </button>
+        <!-- Hitbox -->
+        <div
+          @touchstart.prevent="handleKeyDown(',')"
+          @mousedown="handleKeyDown(',')"
+          @touchend="handleKeyUp(',')"
+          @mouseup="handleKeyUp(',')"
+          class="absolute inset-0 opacity-0 rounded-md cursor-pointer"
+          style="margin: -4px; z-index: 10"
+        ></div>
+      </div>
+      <div class="relative flex-[1.2]">
         <button
           @focus.prevent
           tabindex="-1"
@@ -276,17 +333,58 @@ const props = defineProps({
 const emit = defineEmits(["onKeyPress"]);
 
 const pressedKeys = ref(new Set());
+const deleteInterval = ref(null);
+const deleteTimeout = ref(null);
+const deleteSpeedUpTimeout = ref(null);
+const hasAddedTextInTranslateMode = ref(false);
 
 function handleKeyDown(key) {
   pressedKeys.value.add(key);
-  emitKeyPress(key);
+
+  if (key === "{bksp}") {
+    // Clear any existing timers
+    if (deleteTimeout.value) clearTimeout(deleteTimeout.value);
+    if (deleteInterval.value) clearInterval(deleteInterval.value);
+
+    // Emit initial delete
+    emitKeyPress(key);
+
+    // Start continuous deletion after 250ms delay
+    deleteTimeout.value = setTimeout(() => {
+      deleteInterval.value = setInterval(() => {
+        emitKeyPress(key);
+      }, 100); // Delete every 100ms while held
+    }, 250);
+  } else {
+    emitKeyPress(key);
+  }
 }
 
 function handleKeyUp(key) {
   pressedKeys.value.delete(key);
+
+  if (key === "{bksp}") {
+    // Stop both timeout and interval
+    if (deleteTimeout.value) {
+      clearTimeout(deleteTimeout.value);
+      deleteTimeout.value = null;
+    }
+    if (deleteInterval.value) {
+      clearInterval(deleteInterval.value);
+      deleteInterval.value = null;
+    }
+  }
 }
 
 function emitKeyPress(key) {
+  // Track if text has been added in translate mode
+  if (
+    props.translateMode &&
+    !["{space}", "{enter}", "{bksp}", "{translate}"].includes(key)
+  ) {
+    hasAddedTextInTranslateMode.value = true;
+  }
+
   // Trigger vibration on mobile devices
   if (navigator.vibrate) {
     navigator.vibrate(10); // 50ms vibration
@@ -309,30 +407,6 @@ function emitKeyPress(key) {
   transform: scale(0.98);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.keyboard-key.pressed::before {
-  left: 100%;
-}
-
-.keyboard-key::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.6),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.keyboard-key:active::before {
-  left: 100%;
 }
 
 .keyboard-key:active {

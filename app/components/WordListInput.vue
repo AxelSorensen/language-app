@@ -257,7 +257,7 @@
       :caps-lock="isCapsLock"
       :translate-mode="translateMode"
       :is-translating="isTranslatingMobile"
-      class="fixed bottom-0 left-0 right-0 w-screen z-50"
+      class="fixed bottom-0 sm:hidden left-0 right-0 w-screen z-50"
     />
   </div>
 </template>
@@ -290,12 +290,14 @@ const handleWordBlur = (idx) => {
   // Keep keyboard visible when blurring, but don't change current_word_index
   // This allows keyboard to continue working if user clicks buttons
 };
+
 const words = defineModel("words", {
   type: Array,
   default: () => [{ id: "first", text: "" }],
 });
 const output = ref({ corrections: {} });
 const sentenceErrors = ref(null);
+const currentCheckedSentence = ref("");
 const selected_word_ref = ref(null);
 const word_refs = ref([]);
 const translate_input_ref = ref(null);
@@ -346,15 +348,92 @@ const translateInputFocused = ref(false);
 const isKeyboardVisible = ref(false);
 const originalViewportHeight = ref(0);
 
+const sentences = computed(() => {
+  const fullText = words.value.map((w) => w.text).join(" ");
+  return fullText
+    .split(".")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+});
+
+function getSentenceForWord(wordIndex) {
+  if (wordIndex < 0 || wordIndex >= words.value.length) return "";
+
+  // Find sentence boundaries by looking for words ending with "."
+  const sentenceStartIndices = [0];
+  for (let i = 0; i < words.value.length; i++) {
+    if (words.value[i].text.trim().endsWith(".")) {
+      sentenceStartIndices.push(i + 1);
+    }
+  }
+
+  // Find which sentence this word belongs to
+  let sentenceStart = 0;
+  for (const startIdx of sentenceStartIndices) {
+    if (wordIndex >= startIdx) {
+      sentenceStart = startIdx;
+    } else {
+      break;
+    }
+  }
+
+  // Find the end of this sentence
+  let sentenceEnd = words.value.length;
+  for (let i = sentenceStart; i < words.value.length; i++) {
+    if (words.value[i].text.trim().endsWith(".")) {
+      sentenceEnd = i + 1;
+      break;
+    }
+  }
+
+  // Extract words for this sentence
+  const sentenceWords = words.value.slice(sentenceStart, sentenceEnd);
+  return sentenceWords
+    .map((w) => w.text)
+    .join(" ")
+    .trim();
+}
+
+function getWordIndicesForSentence(sentenceText) {
+  const fullText = words.value.map((w) => w.text).join(" ");
+  const sentenceStart = fullText.indexOf(sentenceText);
+  if (sentenceStart === -1) return [];
+
+  const sentenceEnd = sentenceStart + sentenceText.length;
+  const indices = [];
+
+  let charCount = 0;
+  for (let i = 0; i < words.value.length; i++) {
+    const wordStart = charCount;
+    const wordEnd = charCount + words.value[i].text.length;
+    charCount += words.value[i].text.length + 1; // +1 for space
+
+    // Check if this word overlaps with the sentence
+    if (wordStart < sentenceEnd && wordEnd > sentenceStart) {
+      indices.push(i);
+    }
+  }
+
+  return indices;
+}
+
 const highlightedWordIndices = computed(() => {
-  if (!sentenceErrors.value?.wrong_text) return new Set();
+  if (!sentenceErrors.value?.wrong_text || !currentCheckedSentence.value)
+    return new Set();
 
   const wrongText = sentenceErrors.value.wrong_text.toLowerCase().trim();
   const wrongWords = wrongText.split(/\s+/);
-  const sentenceWords = words.value.map((w) => w.text.toLowerCase().trim());
+  const sentenceWordIndices = getWordIndicesForSentence(
+    currentCheckedSentence.value
+  );
   const highlighted = new Set();
 
-  // Find the exact sequence of wrong words in the sentence
+  // Only search within the words of the checked sentence
+  const sentenceWords = sentenceWordIndices.map((idx) =>
+    words.value[idx].text.toLowerCase().trim()
+  );
+
+  // Find the exact sequence of wrong words in the sentence words
   for (let i = 0; i <= sentenceWords.length - wrongWords.length; i++) {
     let allMatch = true;
     for (let j = 0; j < wrongWords.length; j++) {
@@ -366,7 +445,7 @@ const highlightedWordIndices = computed(() => {
     if (allMatch) {
       // Found the exact sequence, highlight these words
       for (let k = 0; k < wrongWords.length; k++) {
-        highlighted.add(i + k);
+        highlighted.add(sentenceWordIndices[i + k]);
       }
       break; // Take the first match
     }
@@ -544,7 +623,7 @@ function onKeyPress(button) {
       // In translate mode, accept the translation but stay in translate mode
       if (wordsToTranslate.value.trim()) {
         translateAndAppendWords().then(() => {
-          checkSentence();
+          grammarCheck();
           translateFullSentence();
         });
         // Don't exit translate mode - stay in translate mode to continue translating
@@ -636,14 +715,19 @@ function clearAllText() {
   currentTopic.value = "";
 }
 
-function handleSpace(idx) {
-  if (translateMode.value) {
+function handleSpace(e, idx) {
+  if (translateMode.value || !words.value[idx].text) {
+    e.preventDefault();
+    console.log("Space pressed in translate mode or empty word, ignoring.");
     // In translate mode, allow spaces and enters normally
     return;
   }
-  checkWord(words.value[idx], idx);
+  spellCheck(words.value[idx], idx);
   // Always add a new word after the current one
-  words.value.splice(idx + 1, 0, { id: generateWordId(), text: "" });
+  words.value.splice(idx + 1, 0, {
+    id: generateWordId(),
+    text: "",
+  });
   nextTick(() => {
     word_refs.value[idx + 1]?.focus();
     if (word_refs.value[idx + 1]) {
@@ -653,7 +737,7 @@ function handleSpace(idx) {
   });
   // Check the entire sentence for errors
   nextTick(() => {
-    checkSentence();
+    grammarCheck();
   });
   // Translate the full sentence after adding word
   nextTick(() => {
@@ -661,7 +745,7 @@ function handleSpace(idx) {
   });
 }
 
-async function checkWord(word, wordIndex) {
+async function spellCheck(word, wordIndex) {
   // FOR NOW
   if (
     pendingWords.value.has(word.id) ||
@@ -674,8 +758,13 @@ async function checkWord(word, wordIndex) {
     return; // Already checking
   pendingWords.value.add(word.id);
   try {
-    const contextText = words.value.map((w) => w.text).join(" ");
-
+    const contextText = getSentenceForWord(wordIndex);
+    console.log(
+      "Checking word:",
+      word.text,
+      "with sentence context:",
+      contextText
+    );
     const res = await $fetch("/api/process_word", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -699,15 +788,27 @@ async function checkWord(word, wordIndex) {
   }
 }
 
-async function checkSentence() {
-  const sentence = words.value
-    .map((w) => w.text)
-    .join(" ")
-    .trim();
+async function grammarCheck() {
+  // Check the sentence containing the current word
+  const currentWordIndex = current_word_index.value;
+  if (
+    currentWordIndex === null ||
+    currentWordIndex < 0 ||
+    currentWordIndex >= words.value.length
+  ) {
+    sentenceErrors.value = null;
+    return;
+  }
+
+  const sentence = getSentenceForWord(currentWordIndex);
   if (!sentence) {
     sentenceErrors.value = null;
     return;
   }
+
+  console.log("Checking sentence grammar:", sentence);
+
+  currentCheckedSentence.value = sentence;
 
   try {
     const res = await $fetch("/api/check-sentence", {
@@ -730,10 +831,13 @@ function handleWordKeydown(e, idx) {
   if (e.key === "Tab") {
     e.preventDefault();
     // Remove empty strings from words array
-    words.value = words.value.filter((word) => word.text.trim() !== "");
+    words.value = words.value.filter((word) => word?.text?.trim() !== "");
     // If all words were empty, add back one empty string
     if (words.value.length === 0) {
-      words.value.push({ id: "first", text: "" });
+      words.value.push({
+        id: "first",
+        text: "",
+      });
     }
 
     // Only allow entering translate mode if there are actual words written
@@ -807,9 +911,9 @@ function handleWordKeydown(e, idx) {
       return;
     }
 
-    checkSentence();
+    grammarCheck();
     translateFullSentence();
-  }, 500);
+  }, 2000);
 }
 
 function handleWordMouseDown(event, word, idx) {
@@ -862,7 +966,7 @@ function handleWordInput(event) {
     } else {
       // Just one word followed by space(s) - create new empty input
       words.value[currentIdx].text = parts[0];
-      handleSpace(currentIdx);
+      handleSpace(event, currentIdx);
     }
     return;
   }
@@ -878,10 +982,10 @@ function handleWordInput(event) {
       fullTranslatedSentence.value = "";
       return;
     }
-    checkWord(words.value[currentIdx], currentIdx);
-    checkSentence();
+    spellCheck(words.value[currentIdx], currentIdx);
+    grammarCheck();
     translateFullSentence();
-  }, 500);
+  }, 1000);
 }
 
 async function toggleTranslateMode() {
@@ -900,7 +1004,7 @@ async function toggleTranslateMode() {
       translateMode.value = false;
       wordsToTranslate.value = "";
 
-      await checkSentence();
+      await grammarCheck();
       await translateFullSentence();
     } else {
       // Exit translate mode without adding words - just clear translate input
@@ -949,17 +1053,26 @@ async function toggleTranslateMode() {
 
     // If we were in an empty word, add it back and adjust the saved index
     if (wasInEmptyWord && words.value.length === 0) {
-      words.value.push({ id: "first", text: "" });
+      words.value.push({
+        id: "first",
+        text: "",
+      });
       previousWordIndex.value = 0;
     } else if (wasInEmptyWord) {
       // Add empty word at the end and update the saved index
-      words.value.push({ id: generateWordId(), text: "" });
+      words.value.push({
+        id: generateWordId(),
+        text: "",
+      });
       previousWordIndex.value = words.value.length - 1;
     }
 
     // If all words were empty, add back one empty string
     if (words.value.length === 0) {
-      words.value.push({ id: "first", text: "" });
+      words.value.push({
+        id: "first",
+        text: "",
+      });
     }
 
     // If current word has text, create a new empty word and focus on it
@@ -1027,7 +1140,10 @@ function applyCorrection(idx) {
       newWords.splice(
         startIdx,
         wrongWords.length,
-        ...correctionWords.map((text) => ({ id: generateWordId(), text }))
+        ...correctionWords.map((text) => ({
+          id: generateWordId(),
+          text,
+        }))
       );
       words.value = newWords;
 
@@ -1041,7 +1157,14 @@ function applyCorrection(idx) {
           word_refs.value[startIdx].selectionStart = correctionWords[0].length;
           word_refs.value[startIdx].selectionEnd = correctionWords[0].length;
         }
-        checkWord(words.value[startIdx], startIdx);
+        // Check all corrected words in parallel
+        const checkPromises = [];
+        for (let i = 0; i < correctionWords.length; i++) {
+          checkPromises.push(
+            spellCheck(words.value[startIdx + i], startIdx + i)
+          );
+        }
+        Promise.all(checkPromises);
         translateFullSentence();
       });
     }
@@ -1056,7 +1179,10 @@ function applyCorrection(idx) {
 
   const wordInfo = output.value.corrections[wordId];
   if (wordInfo && wordInfo.correction) {
-    words.value[idx] = { id: generateWordId(), text: wordInfo.correction };
+    words.value[idx] = {
+      id: generateWordId(),
+      text: wordInfo.correction,
+    };
     // Clear the correction so the word is no longer highlighted
     wordInfo.word = wordInfo.correction;
     wordInfo.correction = null;
@@ -1166,7 +1292,10 @@ function selectWord(wordIndex) {
 function deleteWord(wordIndex) {
   words.value.splice(wordIndex, 1);
   if (words.value.length === 0) {
-    words.value.push({ id: "first", text: "" });
+    words.value.push({
+      id: "first",
+      text: "",
+    });
   }
 
   // Adjust current_word_index after deletion
@@ -1194,7 +1323,7 @@ function deleteWord(wordIndex) {
       return;
     }
 
-    checkSentence();
+    grammarCheck();
     translateFullSentence();
   }, 500);
 }
@@ -1274,7 +1403,7 @@ async function translateAndAppendWords() {
         text,
       }));
       for (let i = 0; i < tempWords.length; i++) {
-        checkPromises.push(checkWord(tempWords[i], initialLength + i));
+        checkPromises.push(spellCheck(tempWords[i], initialLength + i));
       }
       await Promise.all(checkPromises);
 
@@ -1318,7 +1447,7 @@ async function handleTranslateKeydown(e) {
     if (wordsToTranslate.value.trim()) {
       await translateAndAppendWords();
 
-      await checkSentence();
+      await grammarCheck();
       await translateFullSentence();
     } else {
       translateMode.value = false;
