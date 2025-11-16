@@ -1,113 +1,83 @@
 <template>
-  <div class="flex overflow-hidden items-center h-screen">
-    <!-- Language Selector -->
-    <LanguageSelector @languageChange="handleLanguageChange" />
+  <BaseLayout>
+    <template #header>
+      <LanguageSelector @languageChange="handleLanguageChange" />
+    </template>
 
-    <div class="mx-auto">
-      <WordListInput
-        @wordClick="handleWordClick"
-        :selected_word_index="selected_word_index"
-        v-model:words="words"
-        :languages="languages"
-      />
-    </div>
-
-    <!-- Sidebar -->
-    <div
-      v-if="sidebarOpen"
-      class="fixed right-0 top-0 h-full w-[800px] bg-white border border-gray-200 shadow-lg z-50 transform transition-transform duration-300 ease-in-out p-6"
-    >
-      <div>
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold text-gray-800">
-            {{ words[selected_word_index] }}
-          </h2>
-          <button
-            @click="closeSidebar"
-            class="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <svg
-              class="w-5 h-5 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <div class="p-4 bg-gray-50 rounded-lg">
-            <h3 class="font-medium text-gray-700 mb-2">Word Details</h3>
-            <p class="text-sm text-gray-600">
-              Additional information about "{{ words[selected_word_index] }}"
-              would go here.
-            </p>
-          </div>
-
-          <div v-if="sentences.length > 0" class="mb-6">
-            <h3 class="font-medium text-gray-700 mb-4">Example Sentences</h3>
-            <div class="space-y-3">
-              <p
-                v-for="(sentence, idx) in sentences"
-                :key="idx"
-                class="text-base text-gray-700 leading-relaxed"
-              >
-                <span
-                  v-for="(word, wordIdx) in sentence.split(' ')"
-                  :key="wordIdx"
-                  :class="[
-                    'mr-1',
-                    isMatchingWord(word, words[selected_word_index])
-                      ? 'text-blue-500 font-bold'
-                      : '',
-                  ]"
-                >
-                  {{ word }}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div v-if="wordInfo && wordInfo.fact" class="mb-6">
-            <h3 class="font-medium text-gray-700 mb-4">Fun Fact</h3>
-            <div class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-              <p class="text-sm text-blue-800">{{ wordInfo.fact }}</p>
-            </div>
-          </div>
+    <template #content>
+      <div class="flex relative items-center h-full">
+        <div class="mx-auto">
+          <InputWords ref="inputWordsRef" @wordClick="handleWordClick" />
         </div>
       </div>
-    </div>
+    </template>
 
-    <!-- Optional: Remove overlay to keep word list visible -->
-    <!-- <div
-      v-if="sidebarOpen"
-      @click="closeSidebar"
-      class="fixed inset-0 bg-black bg-opacity-25 z-40"
-    ></div> -->
-  </div>
+    <template #keyboard>
+      <CustomKeyboard
+        :is-translating="translateModeState.isTranslating"
+        @on-key-press="handleKeyPress"
+      />
+    </template>
+  </BaseLayout>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import WordListInput from "~/components/WordListInput.vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import InputWords from "~/components/InputWords.vue";
 import LanguageSelector from "~/components/LanguageSelector.vue";
+import ScreenSizeWidget from "~/components/ScreenSizeWidget.vue";
+import WordSidebar from "~/components/WordSidebar.vue";
+import CustomKeyboard from "~/components/CustomKeyboard.vue";
+import BaseLayout from "~/layouts/BaseLayout.vue";
+import { LanguageService } from "~/services/LanguageService";
+import { useTranslateMode } from "~/composables/useTranslateMode";
+
+definePageMeta({
+  layout: "keyboard",
+});
 
 const sidebarOpen = ref(false);
 const selected_word_index = ref(null);
-const words = ref([{ id: "first", text: "" }]);
 const sentences = ref([]);
 const wordInfo = ref(null);
 const languages = ref({
   source: "en",
   target: "es",
 });
+
+const {
+  state: wordsState,
+  actions: wordsActions,
+  computed: wordsComputed,
+  refs: wordsRefs,
+} = useWords();
+
+const { translateMode, wordsToTranslate } = useTranslateMode();
+
+// ...existing code...
+// Helper: get all word input elements (assuming they have a data-word-index attribute)
+function getWordInputByIndex(idx) {
+  return document.querySelector(`input[data-word-index="${idx}"]`);
+}
+
+// Helper: focus an input element
+function focusInput(input) {
+  if (input && typeof input.focus === "function") {
+    input.focus();
+    return input;
+  }
+  return null;
+}
+
+// Listen for focus events on word inputs to update selected_word_index
+function handleInputFocus(e) {
+  const idx = e.target.getAttribute("data-word-index");
+  if (idx !== null) {
+    selected_word_index.value = Number(idx);
+  }
+}
+
+// Keyboard state
 
 function handleLanguageChange(newLanguages) {
   languages.value = newLanguages;
@@ -148,18 +118,231 @@ async function handleWordClick(idx) {
   }
 }
 
-function isMatchingWord(word, selectedWord) {
-  if (!selectedWord) return false;
-  // Remove punctuation and compare case-insensitively
-  const cleanWord = word.replace(/[.,!?;:"'\s]/g, "").toLowerCase();
-  const cleanSelectedWord = selectedWord.trim().toLowerCase();
-  return cleanWord === cleanSelectedWord;
-}
-
 function closeSidebar() {
   sidebarOpen.value = false;
   selected_word_index.value = null;
   sentences.value = [];
   wordInfo.value = null;
 }
+
+const { state: translateModeState, actions: translateActions } =
+  useTranslateMode();
+
+async function handleSpaceBar(e, isCustom) {
+  if (translateModeState.value.translateMode) {
+    return; // Do not handle backspace in translate mode
+  }
+  e.preventDefault();
+  const idx = wordsState.value.current_input_index;
+  const currentWord = wordsState.value.words?.[idx];
+  const word = currentWord?.text || "";
+
+  if (word.trim() !== "") {
+    // Check if we're in the middle of a word (cursor not at the end)
+    const currentInput = wordsRefs.value?.[idx];
+    const cursorAtEnd =
+      !currentInput || currentInput.selectionStart === word.length;
+
+    if (!cursorAtEnd && currentInput.selectionStart > 0) {
+      // Split the word at cursor position
+      const beforeCursor = word.slice(0, currentInput.selectionStart);
+      const afterCursor = word.slice(currentInput.selectionStart);
+
+      // Update current word to text before cursor
+      currentWord.text = beforeCursor;
+
+      // Insert new word with text after cursor
+      wordsActions.addWords(idx + 1, [afterCursor]);
+
+      // Focus on the new word at the beginning
+      await nextTick();
+      const newInput = wordsRefs.value?.[idx + 1];
+      if (newInput) {
+        newInput.focus();
+        newInput.selectionStart = newInput.selectionEnd = 0;
+      }
+    } else {
+      // Normal behavior: add new word
+      wordsActions.addWord(idx);
+      // Call LanguageService to check the word after adding
+      try {
+        await LanguageService.processWord(word, languages.value.target);
+        // Optionally handle the result here (e.g., update UI, show feedback)
+      } catch (err) {
+        console.error("Word check failed:", err);
+      }
+    }
+  }
+}
+
+function handleEnter(e, isVirtualKeyboard) {
+  // You can handle enter here if needed
+  if (!isVirtualKeyboard) e.preventDefault();
+}
+
+function handleShift(e, isVirtualKeyboard) {
+  e.preventDefault();
+  const { actions: keyboardActions } = useKeyboard();
+  keyboardActions.toggleCapsLock();
+}
+
+function handleBackspace(e, isVirtualKeyboard) {
+  if (isVirtualKeyboard) {
+    const input = translateModeState.value.translateMode
+      ? inputWordsRef.value?.translate_input_ref
+      : wordsRefs.value?.[wordsState.value.current_input_index];
+    const focusedInput = focusInput(input);
+    if (focusedInput) {
+      const start = focusedInput.selectionStart || 0;
+      const end = focusedInput.selectionEnd || 0;
+      const value = focusedInput.value || "";
+      if (start !== end) {
+        // Delete selection
+        focusedInput.value = value.slice(0, start) + value.slice(end);
+        focusedInput.selectionStart = focusedInput.selectionEnd = start;
+      } else if (start > 0) {
+        // Delete previous character
+        focusedInput.value = value.slice(0, start - 1) + value.slice(start);
+        focusedInput.selectionStart = focusedInput.selectionEnd = start - 1;
+      }
+      focusedInput.dispatchEvent(new Event("input", { bubbles: true }));
+      focusedInput.focus();
+    }
+  }
+
+  if (translateModeState.value.translateMode) {
+    return; // Do not handle backspace in translate mode for physical keyboard
+  }
+
+  const currentInput = wordsRefs.value?.[wordsState.value.current_input_index];
+  const currentWord =
+    wordsState.value.words[wordsState.value.current_input_index];
+
+  if (currentWord?.text === "" && wordsState.value.words.length > 1) {
+    // If current word is empty, remove it and move to previous
+    e.preventDefault();
+    wordsActions.deleteWord(wordsState.value.current_input_index);
+    const input = focusInput(
+      wordsRefs.value?.[wordsState.value.current_input_index - 1]
+    );
+  } else if (
+    currentInput &&
+    currentInput.selectionStart === 0 &&
+    wordsState.value.current_input_index > 0
+  ) {
+    // If cursor is at the beginning of a non-empty word, merge with previous word
+    e.preventDefault();
+    const prevIndex = wordsState.value.current_input_index - 1;
+    const prevWord = wordsState.value.words[prevIndex];
+    const currentWord =
+      wordsState.value.words[wordsState.value.current_input_index];
+
+    // Store the length of the previous word before merging
+    const prevWordLength = prevWord.text.length;
+
+    // Merge the current word text to the previous word
+    prevWord.text += currentWord.text;
+
+    // Remove the current word
+    wordsActions.deleteWord(wordsState.value.current_input_index);
+
+    // Focus on the previous word at the position where the words were merged
+    const prevInput = wordsRefs.value?.[prevIndex];
+    if (prevInput) {
+      prevInput.focus();
+      // Use setTimeout to ensure focus is set before setting selection
+      setTimeout(() => {
+        prevInput.selectionStart = prevInput.selectionEnd = prevWordLength;
+      }, 0);
+    }
+  }
+}
+
+const inputWordsRef = ref(null);
+
+async function handleTab(e) {
+  e.preventDefault();
+  const idx = wordsState.value.current_input_index;
+  const currentWord = wordsState.value.words?.[idx]?.text || "";
+  if (currentWord.trim() !== "") {
+  } else {
+    wordsActions.deleteWord(idx);
+  }
+  translateModeState.value.translateMode =
+    !translateModeState.value.translateMode;
+  if (translateModeState.value.translateMode) {
+    await nextTick();
+    if (inputWordsRef.value?.translate_input_ref) {
+      inputWordsRef.value.translate_input_ref.focus();
+    }
+    return;
+  }
+
+  if (!translateModeState.value.wordsToTranslate) {
+    // Add back an empty word where it was deleted
+    wordsActions.addWord(idx - 1);
+    focusInput(wordsRefs.value?.[wordsState.value.words.length - 1]);
+    return;
+  }
+
+  const response = await translateActions.translate(
+    translateModeState.value.wordsToTranslate
+  );
+  console.log("Translation response:", response);
+
+  const translatedText = response.translation;
+  const words = translatedText.split(" ").filter((word) => word.trim() !== "");
+  if (words.length > 0) {
+    wordsActions.addWords(wordsState.value.words.length, words);
+  }
+}
+
+function handleKeyboardEvent(e) {
+  const isVirtualKeyboard = e.type === "custom-keyboard-event";
+  let key = e.key;
+
+  if (key === "{space}" || key === " ") {
+    handleSpaceBar(e, isVirtualKeyboard);
+    return;
+  } else if (key === "Enter" || key === "{enter}") {
+    handleEnter(e, isVirtualKeyboard);
+    return;
+  } else if (key === "Shift" || key === "{shift}") {
+    handleShift(e, isVirtualKeyboard);
+    return;
+  } else if (key === "Backspace" || key === "{backspace}") {
+    handleBackspace(e, isVirtualKeyboard);
+    return;
+  } else if (key === "Tab" || key === "{tab}") {
+    handleTab(e, isVirtualKeyboard);
+    return;
+  }
+
+  // Only manually insert characters for custom keyboard events
+  if (isVirtualKeyboard) {
+    const input = translateModeState.value.translateMode
+      ? inputWordsRef.value?.translate_input_ref
+      : wordsRefs.value?.[wordsState.value.current_input_index];
+    const focusedInput = focusInput(input);
+    if (focusedInput) {
+      const start = focusedInput.selectionStart || 0;
+      const end = focusedInput.selectionEnd || 0;
+      const value = focusedInput.value || "";
+      focusedInput.value = value.slice(0, start) + key + value.slice(end);
+      focusedInput.selectionStart = focusedInput.selectionEnd =
+        start + key.length;
+      focusedInput.dispatchEvent(new Event("input", { bubbles: true }));
+      focusedInput.focus();
+    }
+  }
+}
+
+onMounted(() => {
+  document.addEventListener("custom-keyboard-event", handleKeyboardEvent);
+  document.addEventListener("keydown", handleKeyboardEvent);
+  onBeforeUnmount(() => {
+    document.removeEventListener("custom-keyboard-event", handleKeyboardEvent);
+    document.removeEventListener("keydown", handleKeyboardEvent);
+  });
+});
 </script>

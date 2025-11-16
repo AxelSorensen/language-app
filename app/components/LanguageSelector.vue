@@ -1,15 +1,13 @@
 <template>
-  <div class="fixed top-4 left-4 z-50">
-    <select
-      v-model="targetLanguage"
-      class="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
-      @change="updateLanguages"
-    >
-      <option v-for="lang in languages" :key="lang.id" :value="lang">
-        {{ getFlag(lang.id) }} {{ lang.name }}
-      </option>
-    </select>
-  </div>
+  <select
+    v-model="targetLanguage"
+    class="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+    @change="updateLanguages"
+  >
+    <option v-for="lang in languages" :key="lang.id" :value="lang">
+      {{ getFlag(lang.id) }} {{ lang.name }}
+    </option>
+  </select>
 </template>
 
 <script setup>

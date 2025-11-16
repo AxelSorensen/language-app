@@ -17,6 +17,8 @@ export default defineNuxtConfig({
     host: "0.0.0.0",
   },
 
+  ssr: false,
+
   devtools: { enabled: false },
   css: ["./app/assets/css/main.css"],
 
