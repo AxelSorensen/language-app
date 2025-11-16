@@ -280,8 +280,8 @@ async function handleTab(e) {
 
   if (!translateModeState.value.wordsToTranslate) {
     // Add back an empty word where it was deleted
-    wordsActions.addWord(idx - 1);
-    focusInput(wordsRefs.value?.[wordsState.value.words.length - 1]);
+    wordsActions.addWord(idx);
+    focusInput(wordsRefs.value?.[wordsState.value.words.length]);
     return;
   }
 
