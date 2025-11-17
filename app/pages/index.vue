@@ -313,7 +313,12 @@ async function handleTab(e) {
 
   // Handle translation response and add translated words
   if (!translateModeState.value.wordsToTranslate) {
-    focusInput(wordsRefs.value?.[wordsState.value.words.length - 1]);
+    if (!wordsState.value.words.length) {
+      wordsActions.addWord(0);
+    }
+    nextTick(() => {
+      focusInput(wordsRefs.value?.[wordsState.value.words.length - 1]);
+    });
     return;
   }
 
