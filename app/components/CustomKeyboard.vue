@@ -93,7 +93,7 @@
         :pressed="pressedKeys.has('{tab}')"
         :buttonClass="[
           'keyboard-key w-full font-medium py-3 sm:py-4 rounded-md transition-all duration-150 border shadow-sm flex items-center justify-center',
-          translateMode
+          translateModeState.translateMode
             ? 'bg-purple-300 hover:bg-purple-400 text-purple-900 border-purple-400'
             : 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
           pressedKeys.has('{tab}') ? 'bg-purple-400 pressed' : '',
@@ -123,7 +123,12 @@
             ></path>
           </svg>
         </template>
-        <template v-else-if="translateMode && hasAddedTextInTranslateMode">
+        <template
+          v-else-if="
+            translateModeState.translateMode &&
+            translateModeState.wordsToTranslate.length > 0
+          "
+        >
           <svg
             class="h-6 w-6 shrink-0"
             fill="none"
@@ -224,15 +229,15 @@ const props = defineProps({
     default: false,
   },
 });
-
+const { state: wordsState } = useWords();
 const pressedKeys = ref(new Set());
 const deleteInterval = ref(null);
 const deleteTimeout = ref(null);
 const deleteSpeedUpTimeout = ref(null);
 const hasAddedTextInTranslateMode = ref(false);
-
+const { state: translateModeState } = useTranslateMode();
 // Keyboard state
-const translateMode = ref(false);
+
 const { state: keyboardState, actions: keyboardActions } = useKeyboard();
 
 function handleKeyDown(key) {
