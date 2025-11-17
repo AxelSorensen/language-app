@@ -2,7 +2,6 @@
   <div
     class="select-none border-t border-gray-200 p-2 sm:p-4 rounded-t-xl shadow-lg w-full max-w-none"
   >
-    {{ keyboardState.isCapsLock }}
     <div class="flex flex-row w-full gap-1 mb-1 sm:mb-2 relative">
       <KeyboardKey
         v-for="key in ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P']"

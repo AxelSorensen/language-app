@@ -129,8 +129,9 @@ const { state: translateModeState, actions: translateActions } =
   useTranslateMode();
 
 async function handleSpaceBar(e, isCustom) {
+  // Prevent spacebar handling during translation mode to avoid interfering with text input
   if (translateModeState.value.translateMode) {
-    return; // Do not handle backspace in translate mode
+    return;
   }
   e.preventDefault();
   const idx = wordsState.value.current_input_index;
@@ -138,23 +139,24 @@ async function handleSpaceBar(e, isCustom) {
   const word = currentWord?.text || "";
 
   if (word.trim() !== "") {
-    // Check if we're in the middle of a word (cursor not at the end)
     const currentInput = wordsRefs.value?.[idx];
-    const cursorAtEnd =
-      !currentInput || currentInput.selectionStart === word.length;
+    if (!currentInput) return;
 
+    // Prevent accidental word splitting when cursor is at word start
+    if (currentInput.selectionStart === 0) {
+      return;
+    }
+
+    const cursorAtEnd = currentInput.selectionStart === word.length;
+
+    // Split word at cursor when typing in middle - enables precise word editing
     if (!cursorAtEnd && currentInput.selectionStart > 0) {
-      // Split the word at cursor position
       const beforeCursor = word.slice(0, currentInput.selectionStart);
       const afterCursor = word.slice(currentInput.selectionStart);
 
-      // Update current word to text before cursor
       currentWord.text = beforeCursor;
-
-      // Insert new word with text after cursor
       wordsActions.addWords(idx + 1, [afterCursor]);
 
-      // Focus on the new word at the beginning
       await nextTick();
       const newInput = wordsRefs.value?.[idx + 1];
       if (newInput) {
@@ -162,12 +164,10 @@ async function handleSpaceBar(e, isCustom) {
         newInput.selectionStart = newInput.selectionEnd = 0;
       }
     } else {
-      // Normal behavior: add new word
+      // Create new word when at end - standard word separation behavior
       wordsActions.addWord(idx);
-      // Call LanguageService to check the word after adding
       try {
         await LanguageService.processWord(word, languages.value.target);
-        // Optionally handle the result here (e.g., update UI, show feedback)
       } catch (err) {
         console.error("Word check failed:", err);
       }
@@ -176,17 +176,19 @@ async function handleSpaceBar(e, isCustom) {
 }
 
 function handleEnter(e, isVirtualKeyboard) {
-  // You can handle enter here if needed
+  // Prevent default behavior for physical keyboard, allow virtual keyboard to handle
   if (!isVirtualKeyboard) e.preventDefault();
 }
 
 function handleShift(e, isVirtualKeyboard) {
   e.preventDefault();
+  // Toggle caps lock state for case-sensitive typing
   const { actions: keyboardActions } = useKeyboard();
   keyboardActions.toggleCapsLock();
 }
 
 function handleBackspace(e, isVirtualKeyboard) {
+  // Virtual keyboard needs manual text manipulation since it doesn't trigger native events
   if (isVirtualKeyboard) {
     const input = translateModeState.value.translateMode
       ? inputWordsRef.value?.translate_input_ref
@@ -196,12 +198,11 @@ function handleBackspace(e, isVirtualKeyboard) {
       const start = focusedInput.selectionStart || 0;
       const end = focusedInput.selectionEnd || 0;
       const value = focusedInput.value || "";
+      // Delete selected text or previous character for virtual keyboard
       if (start !== end) {
-        // Delete selection
         focusedInput.value = value.slice(0, start) + value.slice(end);
         focusedInput.selectionStart = focusedInput.selectionEnd = start;
       } else if (start > 0) {
-        // Delete previous character
         focusedInput.value = value.slice(0, start - 1) + value.slice(start);
         focusedInput.selectionStart = focusedInput.selectionEnd = start - 1;
       }
@@ -210,16 +211,34 @@ function handleBackspace(e, isVirtualKeyboard) {
     }
   }
 
+  // Skip word-level operations during translation mode
   if (translateModeState.value.translateMode) {
-    return; // Do not handle backspace in translate mode for physical keyboard
+    return;
   }
 
   const currentInput = wordsRefs.value?.[wordsState.value.current_input_index];
   const currentWord =
     wordsState.value.words[wordsState.value.current_input_index];
 
+  // Handle text selection - delete selected text before other operations
+  if (
+    currentInput &&
+    currentInput.selectionStart !== currentInput.selectionEnd
+  ) {
+    e.preventDefault();
+    const start = currentInput.selectionStart;
+    const end = currentInput.selectionEnd;
+    const value = currentInput.value;
+
+    currentWord.text = value.slice(0, start) + value.slice(end);
+    currentInput.value = currentWord.text;
+    currentInput.selectionStart = currentInput.selectionEnd = start;
+    currentInput.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  // Remove empty words to keep interface clean
   if (currentWord?.text === "" && wordsState.value.words.length > 1) {
-    // If current word is empty, remove it and move to previous
     e.preventDefault();
     wordsActions.deleteWord(wordsState.value.current_input_index);
     const input = focusInput(
@@ -230,27 +249,20 @@ function handleBackspace(e, isVirtualKeyboard) {
     currentInput.selectionStart === 0 &&
     wordsState.value.current_input_index > 0
   ) {
-    // If cursor is at the beginning of a non-empty word, merge with previous word
+    // Merge words when backspacing at start - enables seamless word joining
     e.preventDefault();
     const prevIndex = wordsState.value.current_input_index - 1;
     const prevWord = wordsState.value.words[prevIndex];
     const currentWord =
       wordsState.value.words[wordsState.value.current_input_index];
 
-    // Store the length of the previous word before merging
     const prevWordLength = prevWord.text.length;
-
-    // Merge the current word text to the previous word
     prevWord.text += currentWord.text;
-
-    // Remove the current word
     wordsActions.deleteWord(wordsState.value.current_input_index);
 
-    // Focus on the previous word at the position where the words were merged
     const prevInput = wordsRefs.value?.[prevIndex];
     if (prevInput) {
       prevInput.focus();
-      // Use setTimeout to ensure focus is set before setting selection
       setTimeout(() => {
         prevInput.selectionStart = prevInput.selectionEnd = prevWordLength;
       }, 0);
@@ -264,10 +276,12 @@ async function handleTab(e) {
   e.preventDefault();
   const idx = wordsState.value.current_input_index;
   const currentWord = wordsState.value.words?.[idx]?.text || "";
+  // Clean up empty words before switching modes
   if (currentWord.trim() !== "") {
   } else {
     wordsActions.deleteWord(idx);
   }
+  // Toggle between writing and translation modes
   translateModeState.value.translateMode =
     !translateModeState.value.translateMode;
   if (translateModeState.value.translateMode) {
@@ -278,10 +292,9 @@ async function handleTab(e) {
     return;
   }
 
+  // Handle translation response and add translated words
   if (!translateModeState.value.wordsToTranslate) {
-    // Add back an empty word where it was deleted
-    wordsActions.addWord(idx);
-    focusInput(wordsRefs.value?.[wordsState.value.words.length]);
+    focusInput(wordsRefs.value?.[wordsState.value.words.length - 1]);
     return;
   }
 
@@ -297,10 +310,70 @@ async function handleTab(e) {
   }
 }
 
+function handleArrowLeft(e, isVirtualKeyboard) {
+  // Skip navigation during translation mode to avoid interfering with text input
+  if (translateModeState.value.translateMode) {
+    return;
+  }
+
+  const currentInput = wordsRefs.value?.[wordsState.value.current_input_index];
+  if (!currentInput) return;
+
+  // Navigate to previous word when at start - enables word-level navigation
+  if (
+    currentInput.selectionStart === 0 &&
+    wordsState.value.current_input_index > 0
+  ) {
+    e.preventDefault();
+    const prevIndex = wordsState.value.current_input_index - 1;
+    const prevInput = wordsRefs.value?.[prevIndex];
+    if (prevInput) {
+      prevInput.focus();
+      setTimeout(() => {
+        prevInput.selectionStart = prevInput.selectionEnd =
+          prevInput.value.length;
+      }, 0);
+    }
+  }
+  // Default browser behavior handles cursor movement within current word
+}
+
+function handleArrowRight(e, isVirtualKeyboard) {
+  // Skip navigation during translation mode to avoid interfering with text input
+  if (translateModeState.value.translateMode) {
+    return;
+  }
+
+  const currentInput = wordsRefs.value?.[wordsState.value.current_input_index];
+  if (!currentInput) return;
+
+  const currentWord =
+    wordsState.value.words?.[wordsState.value.current_input_index];
+  const word = currentWord?.text || "";
+
+  // Navigate to next word when at end - enables word-level navigation
+  if (
+    currentInput.selectionStart === word.length &&
+    wordsState.value.current_input_index < wordsState.value.words.length - 1
+  ) {
+    e.preventDefault();
+    const nextIndex = wordsState.value.current_input_index + 1;
+    const nextInput = wordsRefs.value?.[nextIndex];
+    if (nextInput) {
+      nextInput.focus();
+      setTimeout(() => {
+        nextInput.selectionStart = nextInput.selectionEnd = 0;
+      }, 0);
+    }
+  }
+  // Default browser behavior handles cursor movement within current word
+}
+
 function handleKeyboardEvent(e) {
   const isVirtualKeyboard = e.type === "custom-keyboard-event";
   let key = e.key;
 
+  // Route different key types to specialized handlers for proper behavior
   if (key === "{space}" || key === " ") {
     handleSpaceBar(e, isVirtualKeyboard);
     return;
@@ -316,9 +389,15 @@ function handleKeyboardEvent(e) {
   } else if (key === "Tab" || key === "{tab}") {
     handleTab(e, isVirtualKeyboard);
     return;
+  } else if (key === "ArrowLeft") {
+    handleArrowLeft(e, isVirtualKeyboard);
+    return;
+  } else if (key === "ArrowRight") {
+    handleArrowRight(e, isVirtualKeyboard);
+    return;
   }
 
-  // Only manually insert characters for custom keyboard events
+  // Handle regular character input for virtual keyboard
   if (isVirtualKeyboard) {
     const input = translateModeState.value.translateMode
       ? inputWordsRef.value?.translate_input_ref
