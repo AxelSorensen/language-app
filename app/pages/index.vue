@@ -256,8 +256,14 @@ function handleBackspace(e, isVirtualKeyboard) {
     return;
   }
 
-  // Remove empty words to keep interface clean
-  if (currentWord?.text === "" && wordsState.value.words.length > 1) {
+  // Remove empty words only when backspace is pressed at the beginning of an empty word
+  if (
+    currentWord?.text === "" &&
+    wordsState.value.words.length > 1 &&
+    currentInput &&
+    currentInput.selectionStart === 0 &&
+    currentInput.selectionEnd === 0
+  ) {
     e.preventDefault();
     wordsActions.deleteWord(wordsState.value.current_input_index);
     const input = focusInput(

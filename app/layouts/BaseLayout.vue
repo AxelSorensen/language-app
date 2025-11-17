@@ -1,12 +1,12 @@
 <template>
-  <div class="h-screen grid grid-rows-[auto_1fr_auto]">
+  <div class="min-h-dvh flex flex-col">
     <!-- Header Section -->
-    <header class="flex items-center p-4">
+    <header class="flex items-center p-4 shrink-0">
       <slot name="header" />
     </header>
 
     <!-- Content Section -->
-    <main class="overflow-hidden">
+    <main class="flex-1 flex items-center justify-center overflow-hidden">
       <slot name="content" />
     </main>
 
