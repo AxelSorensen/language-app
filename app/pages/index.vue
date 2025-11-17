@@ -2,6 +2,27 @@
   <BaseLayout>
     <template #header>
       <LanguageSelector @languageChange="handleLanguageChange" />
+
+      <button
+        @click="wordsActions.reset()"
+        class="fixed top-4 right-4 cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-50 flex items-center gap-2"
+        title="Clear all text"
+      >
+        <svg
+          class="w-4 h-4 text-gray-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
+        </svg>
+        <span class="text-sm font-medium text-gray-700">Reset</span>
+      </button>
     </template>
 
     <template #content>
@@ -51,8 +72,6 @@ const {
   computed: wordsComputed,
   refs: wordsRefs,
 } = useWords();
-
-const { translateMode, wordsToTranslate } = useTranslateMode();
 
 // ...existing code...
 // Helper: get all word input elements (assuming they have a data-word-index attribute)

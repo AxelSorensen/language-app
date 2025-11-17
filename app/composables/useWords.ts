@@ -73,13 +73,13 @@ export function useWords(): WordsComposable {
   }
 
   const resetState = () => {
+    console.log("Resetting words state");
     // Clear any pending timeout
     if (state.value.typingTimeout) {
       clearTimeout(state.value.typingTimeout);
     }
     // Reset all state to initial values
     state.value = {
-      translateMode: false,
       words: [
         {
           id: "first",
