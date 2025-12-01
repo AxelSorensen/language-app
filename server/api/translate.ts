@@ -1,5 +1,7 @@
 import { NATIVE_LANGUAGE, LANGUAGE_INSTRUCTIONS } from "../constants";
 
+import { defineEventHandler } from "h3";
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;

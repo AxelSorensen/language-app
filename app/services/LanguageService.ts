@@ -14,6 +14,7 @@ export class LanguageService {
       return "";
     }
   }
+
   static async checkSentence(sentence: string, language: string) {
     return $fetch(`/api/check-sentence`, {
       method: "POST",
@@ -28,10 +29,10 @@ export class LanguageService {
     });
   }
 
-  static async processWord(word: string, language: string) {
-    return $fetch(`/api/process_word`, {
+  static async spellCheck(input: string, context: string) {
+    return $fetch(`/api/spell-check`, {
       method: "POST",
-      body: { word, language },
+      body: { input, context },
     });
   }
 

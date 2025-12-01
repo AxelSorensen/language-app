@@ -1,3 +1,4 @@
+import { defineEventHandler } from "h3";
 import { NATIVE_LANGUAGE, LANGUAGE_INSTRUCTIONS } from "../constants";
 
 export default defineEventHandler(async (event) => {

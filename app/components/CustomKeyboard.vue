@@ -229,7 +229,6 @@ const props = defineProps({
     default: false,
   },
 });
-const { state: wordsState } = useWords();
 const pressedKeys = ref(new Set());
 const deleteInterval = ref(null);
 const deleteTimeout = ref(null);

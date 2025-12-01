@@ -64,11 +64,6 @@ import WritingPrompt from "./WritingPrompt.vue";
 import { useTranslateMode } from "~/composables/useTranslateMode";
 
 const emit = defineEmits(["wordClick"]);
-const {
-  state: wordsState,
-  actions: wordsActions,
-  refs: wordsRefs,
-} = useWords();
 
 const { state: translateModeState } = useTranslateMode();
 // Use the words composable first
@@ -77,7 +72,7 @@ const selected_word_ref = ref(null);
 const translate_input_ref = ref(null);
 
 // Use wordsState refs
-const words = wordsState.value.words;
+const words = wordsState?.value?.words;
 
 // Update the words composable with keyboard state
 // Note: This is a bit of a hack - ideally we'd restructure this
@@ -126,7 +121,7 @@ function handleWordMouseDown(event, word, idx) {
 //   // ...update UI state with result
 // });
 
-wordsActions.onSentenceCreated(() => {
+wordsActions?.onSentenceCreated(() => {
   console.log("Sentence created callback triggered.");
   // You can add additional logic here if needed when a new sentence is created
 });

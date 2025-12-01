@@ -27,8 +27,15 @@
 
     <template #content>
       <div class="flex relative items-center h-full">
-        <div class="mx-auto">
-          <InputWords ref="inputWordsRef" @wordClick="handleWordClick" />
+        <div class="mx-auto text-2xl">
+          <ModularInput
+            ref="modularInputRef"
+            :words="words"
+            @input-created="handleInputCreated"
+            @process-current="handleProcessCurrent"
+            @delete-word="handleDeleteWord"
+            @check-sentence="handleCheckSentence"
+          />
         </div>
       </div>
     </template>
@@ -42,9 +49,10 @@
   </BaseLayout>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import InputWords from "~/components/InputWords.vue";
+import ModularInput from "~/components/ModularInput.vue";
 import LanguageSelector from "~/components/LanguageSelector.vue";
 import ScreenSizeWidget from "~/components/ScreenSizeWidget.vue";
 import WordSidebar from "~/components/WordSidebar.vue";
@@ -52,6 +60,8 @@ import CustomKeyboard from "~/components/CustomKeyboard.vue";
 import BaseLayout from "~/layouts/BaseLayout.vue";
 import { LanguageService } from "~/services/LanguageService";
 import { useTranslateMode } from "~/composables/useTranslateMode";
+import { useWords } from "~/composables/useWords";
+import checkSentence from "~~/server/api/check-sentence";
 
 definePageMeta({
   layout: "keyboard",
@@ -66,14 +76,11 @@ const languages = ref({
   target: "es",
 });
 
-const {
-  state: wordsState,
-  actions: wordsActions,
-  computed: wordsComputed,
-  refs: wordsRefs,
-} = useWords();
+const wordsComposable = useWords();
+const { words, processWord } = wordsComposable;
 
-// ...existing code...
+const modularInputRef = ref();
+
 // Helper: get all word input elements (assuming they have a data-word-index attribute)
 function getWordInputByIndex(idx) {
   return document.querySelector(`input[data-word-index="${idx}"]`);
@@ -88,7 +95,6 @@ function focusInput(input) {
   return null;
 }
 
-// Listen for focus events on word inputs to update selected_word_index
 function handleInputFocus(e) {
   const idx = e.target.getAttribute("data-word-index");
   if (idx !== null) {
@@ -143,6 +149,39 @@ function closeSidebar() {
   sentences.value = [];
   wordInfo.value = null;
 }
+
+const handleInputCreated = (idx: number) => {
+  if (words.value[idx].status === "idle") {
+    processWord(words.value[idx].id, words.value.map((w) => w.text).join(" "));
+  }
+};
+
+const handleProcessCurrent = (id: string) => {
+  const idx = words.value.findIndex((w) => w.id === id);
+  if (idx !== -1 && words.value[idx].status === "idle") {
+    processWord(id, words.value.map((w) => w.text).join(" "));
+  }
+};
+
+const handleDeleteWord = (idx: number) => {
+  words.value.splice(idx, 1);
+  nextTick(() => {
+    modularInputRef.value?.focusOn(idx);
+  });
+};
+
+const handleCheckSentence = async () => {
+  const fullText = words.value.map((w) => w.text).join(" ");
+  if (fullText.trim()) {
+    try {
+      const result = await LanguageService.checkSentence(fullText, "es"); // assuming Spanish, or get from settings
+      console.log("Sentence correction:", result);
+      // TODO: perhaps update the words with corrections
+    } catch (error) {
+      console.error("Sentence check failed:", error);
+    }
+  }
+};
 
 const { state: translateModeState, actions: translateActions } =
   useTranslateMode();

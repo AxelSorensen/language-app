@@ -1,5 +1,7 @@
 import { NATIVE_LANGUAGE, WORD_LANGUAGE_INSTRUCTIONS } from "../constants";
 
+import { defineEventHandler, getCookie, readBody } from "h3";
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;
@@ -13,26 +15,23 @@ export default defineEventHandler(async (event) => {
   const extraInstruction = WORD_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
 
   // Construct prompt for OpenAI with explicit structured output instructions
-  const prompt = `You are a language assistant. The full sentence context is: "${context}". Analyze the specified word in this context.
+  const prompt = `You are a spelling and translation assistant. Analyze the specified word: "${word}" in the context: "${context}".
 
 You are translating from ${targetLanguage} to ${NATIVE_LANGUAGE}.
 
-For the word you analyze, return:
+Return:
 - word: the original word
-- correction: the corrected version (ONLY if the word is genuinely incorrect - spelling errors, grammar mistakes, or incorrect usage). If the word is correct, set this to null.
-- explanation: a very brief explanation of why this correction is needed (ONLY if correction is provided, otherwise null)
-- translation: the ${NATIVE_LANGUAGE} translation of the word, considering the full sentence context
+- correction: the corrected spelling (ONLY if it's a clear spelling error). If correctly spelled, set to null.
+- translation: the ${NATIVE_LANGUAGE} translation. If the word is unknown or ambiguous, set to "unknown".
 
 IMPORTANT RULES:
-- Analyze only the specified word
-- Consider the entire sentence context when providing the translation to ensure accuracy
-- Provide translation from ${targetLanguage} to ${NATIVE_LANGUAGE}
-- Only provide correction if the word actually needs it (spelling, grammar, or usage errors)
-- If no correction is needed, set correction and explanation to null
-- Handle mixed-language input properly
-${extraInstruction ? `- ${extraInstruction}` : ""}
+- Correct spelling for common errors (e.g., "teh" -> "the").
+- Corrections should be in ${targetLanguage}.
+- Provide translation for known words in context.
+- Set translation to "unknown" only if the word is genuinely unrecognized or has multiple meanings that can't be disambiguated.
+- Prefer providing translation over marking as unknown.
 
-Return a JSON object with the word information.`;
+Return a JSON object.`;
   const input = word;
   const schema = {
     type: "object",
@@ -43,16 +42,17 @@ Return a JSON object with the word information.`;
       },
       correction: {
         type: ["string", "null"],
-        description: "Corrected word (only if incorrect, otherwise null)",
+        description:
+          "Corrected spelling (only if very obvious, otherwise null)",
       },
       explanation: {
         type: ["string", "null"],
         description:
-          "Brief explanation of why the correction is needed (only if correction provided, otherwise null)",
+          "Brief explanation of the spelling error (only if correction provided, otherwise null)",
       },
       translation: {
         type: "string",
-        description: `${NATIVE_LANGUAGE} translation of the word`,
+        description: `${NATIVE_LANGUAGE} translation or "unknown"`,
       },
     },
     required: ["word", "correction", "explanation", "translation"],
@@ -68,11 +68,14 @@ Return a JSON object with the word information.`;
     result.correction =
       result.correction &&
       result.word.trim().toLowerCase() !==
-        result.correction.trim().toLowerCase()
+        result.correction.trim().toLowerCase() &&
+      result.correction !== "null"
         ? result.correction
         : null;
     // Clear explanation if no correction
     result.explanation = result.correction ? result.explanation : null;
+    // Set translation to "unknown" if null
+    if (!result.translation) result.translation = "unknown";
   }
   console.log("Filtered result:", result);
   return result;
