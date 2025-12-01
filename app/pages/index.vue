@@ -16,6 +16,11 @@
             @input-created="handleInputCreated"
             @process-current="handleProcessCurrent"
             @delete-word="handleDeleteWord"
+            @apply-correction="handleApplyCorrection"
+            @apply-sentence-correction="handleApplySentenceCorrection"
+            @break-word="handleBreakWord"
+            @merge-words="handleMergeWords"
+            @add-word-after="handleAddWordAfter"
             @check-sentence="handleCheckSentence"
             @update:wordsToTranslate="wordsToTranslate = $event"
           />
@@ -33,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 import ModularInput from "~/components/ModularInput.vue";
 import LanguageSelector from "~/components/LanguageSelector.vue";
 import CustomKeyboard from "~/components/CustomKeyboard.vue";
@@ -52,7 +57,24 @@ const languages = ref({
 
 const { words, processWord } = useWords();
 
+if (words.value.length === 0) {
+  words.value.push({
+    text: "",
+    id: crypto.randomUUID(),
+    correction: null,
+    translation: null,
+    status: "idle",
+    sentenceError: null,
+  });
+}
+
 const modularInputRef = ref();
+
+const previousSelection = ref<{
+  idx: number;
+  start: number;
+  end: number;
+} | null>(null);
 
 function handleLanguageChange(newLanguages) {
   languages.value = newLanguages;
@@ -73,7 +95,115 @@ const handleProcessCurrent = (id: string) => {
 
 const handleDeleteWord = (idx: number) => {
   words.value.splice(idx, 1);
-  // Focus will be handled by ModularInput
+  // Handle focus
+  nextTick(() => {
+    if (words.value.length > 0) {
+      const focusIdx = Math.min(idx, words.value.length - 1);
+      modularInputRef.value.focusOnEnd(focusIdx);
+    }
+  });
+};
+
+const handleApplyCorrection = (idx: number) => {
+  if (words.value[idx].correction) {
+    words.value[idx].text = words.value[idx].correction;
+    words.value[idx].correction = null;
+    words.value[idx].translation = null;
+    words.value[idx].status = "idle";
+    processWord(words.value[idx].id, words.value.map((w) => w.text).join(" "));
+    // Move cursor to the end of the corrected word
+    nextTick(() => {
+      modularInputRef.value.focusOnEnd(idx);
+    });
+  }
+};
+
+const handleApplySentenceCorrection = () => {
+  const wrongWords = words.value.filter((w) => w.sentenceError);
+  if (wrongWords.length > 0) {
+    const correction = wrongWords[0].sentenceError!.correction;
+    const correctionWords = correction.split(" ");
+    if (correctionWords.length === wrongWords.length) {
+      wrongWords.forEach((w, i) => {
+        w.text = correctionWords[i];
+        w.sentenceError = null;
+        w.translation = null;
+        w.status = "idle";
+        processWord(w.id, words.value.map((w) => w.text).join(" "));
+      });
+      // Focus on the last corrected word
+      nextTick(() => {
+        const lastIdx = words.value.indexOf(wrongWords[wrongWords.length - 1]);
+        modularInputRef.value.focusOnEnd(lastIdx);
+      });
+    }
+  }
+};
+
+const handleBreakWord = ({
+  idx,
+  cursorPos,
+}: {
+  idx: number;
+  cursorPos: number;
+}) => {
+  const word = words.value[idx];
+  const before = word.text.slice(0, cursorPos);
+  const after = word.text.slice(cursorPos);
+  word.text = before;
+  word.status = "idle";
+  words.value.splice(idx + 1, 0, {
+    text: after,
+    id: crypto.randomUUID(),
+    correction: null,
+    translation: null,
+    status: "idle",
+    sentenceError: null,
+  });
+  // Process both words from the split
+  processWord(word.id, words.value.map((w) => w.text).join(" "));
+  processWord(
+    words.value[idx + 1].id,
+    words.value.map((w) => w.text).join(" ")
+  );
+  // Focus the new input at beginning
+  nextTick(() => {
+    modularInputRef.value.focusOnPosition(idx + 1, 0);
+  });
+};
+
+const handleMergeWords = (idx: number) => {
+  const currentText = words.value[idx].text;
+  words.value[idx - 1].text += currentText;
+  words.value.splice(idx, 1);
+  words.value[idx - 1].status = "idle";
+  // Process the merged word
+  processWord(
+    words.value[idx - 1].id,
+    words.value.map((w) => w.text).join(" ")
+  );
+  // Focus the merged input at the merge point
+  nextTick(() => {
+    modularInputRef.value.focusOnPosition(
+      idx - 1,
+      words.value[idx - 1].text.length - currentText.length
+    );
+  });
+};
+
+const handleAddWordAfter = (idx: number) => {
+  words.value.splice(idx + 1, 0, {
+    text: "",
+    id: crypto.randomUUID(),
+    correction: null,
+    translation: null,
+    status: "idle",
+    sentenceError: null,
+  });
+  // Focus the new input at beginning
+  nextTick(() => {
+    modularInputRef.value.focusOnPosition(idx + 1, 0);
+  });
 };
 
 const handleCheckSentence = async () => {
@@ -85,7 +215,26 @@ const handleCheckSentence = async () => {
         body: { sentence: fullText },
       });
       console.log("Sentence correction:", result);
-      // TODO: perhaps update the words with corrections
+      // Clear previous sentence errors
+      words.value.forEach((w) => (w.sentenceError = null));
+      if (result.wrong_text) {
+        const startIdx = fullText.indexOf(result.wrong_text);
+        if (startIdx !== -1) {
+          const endIdx = startIdx + result.wrong_text.length;
+          let currentIdx = 0;
+          for (let i = 0; i < words.value.length; i++) {
+            const wordStart = currentIdx;
+            const wordEnd = currentIdx + words.value[i].text.length;
+            if (wordEnd > startIdx && wordStart < endIdx) {
+              words.value[i].sentenceError = {
+                correction: result.correction,
+                explanation: result.explanation,
+              };
+            }
+            currentIdx += words.value[i].text.length + 1; // +1 for space
+          }
+        }
+      }
     } catch (error) {
       console.error("Sentence check failed:", error);
     }
@@ -106,6 +255,22 @@ const wordsToTranslate = computed({
 });
 
 async function handleTab() {
+  if (!translateModeComp.state.value.translateMode) {
+    // Save current selection before entering translate mode
+    const activeElement = document.activeElement as HTMLInputElement;
+    if (activeElement && activeElement.tagName === "INPUT") {
+      const idx = modularInputRef.value?.inputsRefs.findIndex(
+        (el) => el === activeElement
+      );
+      if (idx !== -1 && idx !== undefined) {
+        previousSelection.value = {
+          idx,
+          start: activeElement.selectionStart || 0,
+          end: activeElement.selectionEnd || 0,
+        };
+      }
+    }
+  }
   translateModeComp.state.value.translateMode =
     !translateModeComp.state.value.translateMode;
   if (translateModeComp.state.value.translateMode) {
@@ -122,6 +287,16 @@ async function handleTab() {
 
   // Handle translation response and add translated words
   if (!translateModeComp.state.value.wordsToTranslate) {
+    // Restore previous selection
+    if (previousSelection.value) {
+      await nextTick();
+      modularInputRef.value.focusOnPosition(
+        previousSelection.value.idx,
+        previousSelection.value.start,
+        previousSelection.value.end
+      );
+      previousSelection.value = null;
+    }
     return;
   }
 
@@ -143,6 +318,18 @@ async function handleTab() {
         correction: null,
         translation: null,
       });
+    }
+    // Focus on the last added word at the end
+    await nextTick();
+    modularInputRef.value.focusOnEnd(words.value.length - 1);
+    // Process the new translated words
+    const fullText = words.value.map((w) => w.text).join(" ");
+    for (
+      let i = words.value.length - newWords.length;
+      i < words.value.length;
+      i++
+    ) {
+      processWord(words.value[i].id, fullText);
     }
   }
 }

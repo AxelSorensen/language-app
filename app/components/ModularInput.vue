@@ -1,7 +1,12 @@
 <template>
   <div class="flex">
-    <div v-for="(word, idx) in words" :key="word.id" class="relative group">
+    <div
+      v-for="(word, idx) in words || []"
+      :key="word.id"
+      class="relative group"
+    >
       <input
+        v-if="!(!word.text && (isTranslating || translateMode))"
         autofocus
         :ref="(el) => setInputRef(idx, el as HTMLInputElement)"
         v-model="word.text"
@@ -14,16 +19,41 @@
             : word.translation === 'unknown'
             ? 'text-red-600'
             : '',
+          word.sentenceError
+            ? 'underline decoration-dashed decoration-gray-400 underline-offset-2'
+            : '',
         ]"
         @input="saveSelection(idx)"
+        @focus="currentFocusedIdx = idx"
         @keydown="handleKeydown($event, idx)"
       />
-
       <SimpleTooltip
-        :text="word.correction || word.translation || ''"
-        :type="word.correction ? 'correction' : 'translation'"
-        :enabled="!!(word.correction || word.translation)"
-        @click="word.correction ? applyCorrection(idx) : undefined"
+        :text="
+          word.correction ||
+          (word.sentenceError
+            ? word.sentenceError.correction +
+              ' (' +
+              word.sentenceError.explanation +
+              ')'
+            : '') ||
+          word.translation ||
+          ''
+        "
+        :type="
+          word.correction
+            ? 'correction'
+            : word.sentenceError
+            ? 'sentence'
+            : 'translation'
+        "
+        :enabled="!!(word.correction || word.sentenceError || word.translation)"
+        @click="
+          word.correction
+            ? applyCorrection(idx)
+            : word.sentenceError
+            ? $emit('apply-sentence-correction')
+            : undefined
+        "
         @deleteWord="$emit('delete-word', idx)"
       />
     </div>
@@ -31,7 +61,7 @@
       inputmode="none"
       v-if="translateMode || isTranslating"
       ref="translateInputRef"
-      class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans text-purple-500"
+      class="outline-none border-none field-sizing-content text-2xl font-sans text-purple-500"
       :class="[isTranslating ? 'animate-pulse' : '']"
       placeholder="words to translate..."
       :value="wordsToTranslate"
@@ -67,11 +97,18 @@ const emit = defineEmits<{
   "input-created": [index: number];
   "process-current": [id: string];
   "delete-word": [index: number];
+  "apply-correction": [index: number];
+  "apply-sentence-correction": [];
+  "break-word": [{ idx: number; cursorPos: number }];
+  "merge-words": [index: number];
+  "add-word-after": [index: number];
   "check-sentence": [];
   "update:wordsToTranslate": [value: string];
 }>();
 
 const translateInputRef = ref<HTMLInputElement>();
+
+const currentFocusedIdx = ref(-1);
 
 const inputsRefs = ref<HTMLInputElement[]>([]);
 const setInputRef = (idx: number, el: HTMLInputElement | null) => {
@@ -86,85 +123,19 @@ const selections = useState<Record<number, { start: number; end: number }>>(
 const typingTimeout = ref<NodeJS.Timeout | null>(null);
 
 const applyCorrection = (idx: number) => {
-  if (words[idx].correction) {
-    words[idx].text = words[idx].correction;
-    words[idx].correction = null;
-    words[idx].status = "checked";
-    // Move cursor to the end of the corrected word
-    nextTick(() => {
-      const inputEl = inputsRefs.value[idx];
-      if (inputEl) {
-        inputEl.focus();
-        const len = words[idx].text.length;
-        inputEl.setSelectionRange(len, len);
-      }
-    });
-  }
+  emit("apply-correction", idx);
 };
-
-watch(
-  words,
-  (newWords) => {
-    if (newWords.length === 0) {
-      newWords.push({
-        text: "",
-        id: crypto.randomUUID(),
-        correction: null,
-        translation: null,
-        status: "idle",
-      });
-    }
-  },
-  { immediate: true }
-);
 
 const breakWord = (
   inputEl: HTMLInputElement,
   idx: number,
   cursorPos: number
 ) => {
-  const text = words[idx].text;
-  const before = text.slice(0, cursorPos);
-  const after = text.slice(cursorPos);
-  words[idx].text = before;
-  words[idx].status = "idle";
-  words.splice(idx + 1, 0, {
-    text: after,
-    id: crypto.randomUUID(),
-    correction: null,
-    translation: null,
-    status: "idle",
-  });
-  emit("input-created", idx);
-  // Process both words from the split
-  emit("process-current", words[idx].id);
-  emit("process-current", words[idx + 1].id);
-  // Focus the new input at beginning
-  nextTick(() => {
-    const newInput = inputsRefs.value[idx + 1];
-    if (newInput) {
-      newInput.focus();
-      newInput.setSelectionRange(0, 0);
-    }
-  });
+  emit("break-word", { idx, cursorPos });
 };
 
 const mergeWords = (idx: number) => {
-  const currentText = words[idx].text;
-  words[idx - 1].text += currentText;
-  words.splice(idx, 1);
-  words[idx - 1].status = "idle";
-  // Process the merged word
-  emit("process-current", words[idx - 1].id);
-  // Focus the merged input at the merge point
-  nextTick(() => {
-    const prevInput = inputsRefs.value[idx - 1];
-    if (prevInput) {
-      prevInput.focus();
-      const len = words[idx - 1]?.text.length - currentText.length || 0;
-      prevInput.setSelectionRange(len, len);
-    }
-  });
+  emit("merge-words", idx);
 };
 
 const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
@@ -172,23 +143,10 @@ const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
   if (cursorPos < words[idx].text.length) {
     breakWord(inputEl, idx, cursorPos);
   } else if (words[idx].text.trim()) {
+    // Process the current word before adding new
+    emit("process-current", words[idx].id);
     // Add new input after if at end
-    words.splice(idx + 1, 0, {
-      text: "",
-      id: crypto.randomUUID(),
-      correction: null,
-      translation: null,
-      status: "idle",
-    });
-    emit("input-created", idx);
-    // Focus the new input at beginning
-    nextTick(() => {
-      const newInput = inputsRefs.value[idx + 1];
-      if (newInput) {
-        newInput.focus();
-        newInput.setSelectionRange(0, 0);
-      }
-    });
+    emit("add-word-after", idx);
   }
 };
 
@@ -207,15 +165,7 @@ const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
   }
   if (!words[idx].text && idx > 0) {
     // If backspace on empty input, remove it and focus previous at end
-    words.splice(idx, 1);
-    nextTick(() => {
-      const prevInput = inputsRefs.value[idx - 1];
-      if (prevInput) {
-        prevInput.focus();
-        const len = words[idx - 1]?.text.length || 0;
-        prevInput.setSelectionRange(len, len);
-      }
-    });
+    emit("delete-word", idx);
   } else if (inputEl.selectionStart === 0 && idx > 0) {
     // Merge with previous input
     mergeWords(idx);
@@ -327,8 +277,31 @@ const focusOn = (idx: number) => {
   });
 };
 
+const focusOnEnd = (idx: number) => {
+  nextTick(() => {
+    const inputEl = inputsRefs.value[idx];
+    if (inputEl) {
+      inputEl.focus();
+      const len = words[idx].text.length;
+      inputEl.setSelectionRange(len, len);
+    }
+  });
+};
+
+const focusOnPosition = (idx: number, start: number, end: number) => {
+  nextTick(() => {
+    const inputEl = inputsRefs.value[idx];
+    if (inputEl) {
+      inputEl.focus();
+      inputEl.setSelectionRange(start, end);
+    }
+  });
+};
+
 defineExpose({
   focusOn,
+  focusOnEnd,
+  focusOnPosition,
   translateInputRef,
   handleSpace,
   handleBackspace,

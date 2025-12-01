@@ -15,19 +15,21 @@ export default defineEventHandler(async (event) => {
   const extraInstruction = WORD_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
 
   // Construct prompt for OpenAI with explicit structured output instructions
-  const prompt = `You are a spelling correction assistant. Analyze the specified word: "${word}" in the context: "${context}".
+  const prompt = `You are a spelling correction assistant for ${targetLanguage}.
 
-You are working with ${targetLanguage}.
+Check if "${word}" is a valid word in ${targetLanguage}. Do not consider context, conjugation, grammar, or any linguistic analysis - just check if it's a basic dictionary word.
 
 Return:
 - word: the original word
-- correction: the corrected spelling (ONLY if it's a clear spelling error). If correctly spelled, set to null.
-- explanation: brief explanation of the spelling error (only if correction provided, otherwise null).
+- correction: the correct spelling if it's not a valid ${targetLanguage} word, otherwise null
+- explanation: brief explanation if correction provided, otherwise null
 
 IMPORTANT RULES:
-- Correct spelling for common errors (e.g., "teh" -> "the").
-- Corrections should be in ${targetLanguage}.
-- Only provide correction if it's a very obvious spelling mistake.
+- Only correct if the word is completely invalid in ${targetLanguage}
+- Do not correct valid words that might be misspelled in context
+- Do not consider verb forms, plurals, or grammatical variations
+- Only provide correction for obvious non-words or completely wrong spellings
+- If the word exists in ${targetLanguage} dictionary (in any form), set correction to null
 
 Return a JSON object.`;
   const input = word;
@@ -41,7 +43,7 @@ Return a JSON object.`;
       correction: {
         type: ["string", "null"],
         description:
-          "Corrected spelling (only if very obvious, otherwise null)",
+          "Correct spelling if the word is invalid in the target language, otherwise null",
       },
       explanation: {
         type: ["string", "null"],
