@@ -15,7 +15,7 @@
           'mr-1 outline-none border-none field-sizing-content',
           { 'animate-pulse': word.status === 'pending' },
           word.correction
-            ? 'text-orange-400'
+            ? 'text-green-600'
             : word.translation === 'unknown'
             ? 'text-red-600'
             : '',
@@ -42,6 +42,8 @@
         :type="
           word.correction
             ? 'correction'
+            : word.translation === 'unknown'
+            ? 'unknown'
             : word.sentenceError
             ? 'sentence'
             : 'translation'

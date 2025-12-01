@@ -21,15 +21,16 @@ Check if "${word}" is a valid word in ${targetLanguage}. Do not consider context
 
 Return:
 - word: the original word
-- correction: the correct spelling if it's not a valid ${targetLanguage} word, otherwise null
-- explanation: brief explanation if correction provided, otherwise null
+- type: "valid" | "correction" | "unknown_word"
+- correction: the correct spelling if type is "correction", otherwise null
+- explanation: brief explanation if type is "correction", otherwise null
 
 IMPORTANT RULES:
-- Only correct if the word is completely invalid in ${targetLanguage}
-- Do not correct valid words that might be misspelled in context
+- If the word is valid in ${targetLanguage}, set type to "valid"
+- If the word is invalid in ${targetLanguage} but has a clear spelling correction, set type to "correction" and provide the correction
+- If the word is valid in other languages but not in ${targetLanguage}, set type to "unknown_word"
 - Do not consider verb forms, plurals, or grammatical variations
 - Only provide correction for obvious non-words or completely wrong spellings
-- If the word exists in ${targetLanguage} dictionary (in any form), set correction to null
 
 Return a JSON object.`;
   const input = word;
@@ -40,18 +41,24 @@ Return a JSON object.`;
         type: "string",
         description: "The original word",
       },
+      type: {
+        type: "string",
+        enum: ["valid", "correction", "unknown_word"],
+        description:
+          "The type of result: valid (no issues), correction (spelling fix needed), unknown_word (valid in other languages)",
+      },
       correction: {
         type: ["string", "null"],
         description:
-          "Correct spelling if the word is invalid in the target language, otherwise null",
+          "The corrected spelling if type is 'correction', otherwise null",
       },
       explanation: {
         type: ["string", "null"],
         description:
-          "Brief explanation of the spelling error (only if correction provided, otherwise null)",
+          "Brief explanation if type is 'correction', otherwise null",
       },
     },
-    required: ["word", "correction", "explanation"],
+    required: ["word", "type", "correction", "explanation"],
     additionalProperties: false,
   };
   const result = await llm_service.generate(
@@ -61,15 +68,26 @@ Return a JSON object.`;
 
   // Filter out invalid corrections where the word is the same as the correction
   if (result) {
-    result.correction =
-      result.correction &&
-      result.word.trim().toLowerCase() !==
-        result.correction.trim().toLowerCase() &&
-      result.correction !== "null"
-        ? result.correction
-        : null;
-    // Clear explanation if no correction
-    result.explanation = result.correction ? result.explanation : null;
+    if (result.type === "correction") {
+      result.correction =
+        result.correction &&
+        result.word.trim().toLowerCase() !==
+          result.correction.trim().toLowerCase() &&
+        result.correction !== "null"
+          ? result.correction
+          : null;
+      // Clear explanation if no correction
+      result.explanation = result.correction ? result.explanation : null;
+      if (!result.correction) {
+        result.type = "valid";
+      }
+    } else if (result.type === "unknown_word") {
+      result.correction = null;
+      result.explanation = null;
+    } else if (result.type === "valid") {
+      result.correction = null;
+      result.explanation = null;
+    }
   }
   console.log("Filtered result:", result);
   return result;

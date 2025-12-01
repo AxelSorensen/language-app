@@ -7,72 +7,99 @@
         ? ' text-gray-600'
         : type === 'correction' && text === 'null'
         ? ' text-red-600'
+        : type === 'unknown'
+        ? ' text-red-600'
         : ` text-green-600 cursor-pointer ${
             !isHoveringInfo ? 'hover:bg-green-50' : ''
           }`,
     ]"
     :style="{
-      cursor: type === 'correction' && text !== 'null' ? 'pointer' : 'default',
+      cursor:
+        (type === 'correction' && text !== 'null') || type === 'unknown'
+          ? 'pointer'
+          : 'default',
     }"
     @click="
-      type === 'correction' && text !== 'null' ? $emit('applyCorrection') : null
+      type === 'correction' && text !== 'null'
+        ? $emit('applyCorrection')
+        : type === 'unknown'
+        ? $emit('deleteWord')
+        : null
     "
   >
     <div class="flex items-center gap-2">
       <span
         class="inline-flex items-center gap-1"
         :class="
-          type === 'translation' && text === 'unknown' ? 'text-red-600' : ''
+          (type === 'translation' && text === 'unknown') || type === 'unknown'
+            ? 'text-red-600'
+            : ''
         "
       >
         <span
           class="inline-flex items-center justify-center w-5 h-5 rounded-full"
           :class="
-            type === 'translation' && text !== 'unknown'
+            (type === 'translation' && text !== 'unknown') ||
+            type === 'sentence'
               ? 'bg-gray-200'
-              : type === 'translation' && text === 'unknown'
+              : (type === 'translation' && text === 'unknown') ||
+                type === 'unknown'
               ? 'bg-red-100'
               : 'bg-green-100'
           "
         >
           <Icon
             :name="
-              type === 'translation' && text !== 'unknown'
+              (type === 'translation' && text !== 'unknown') ||
+              type === 'sentence'
                 ? 'heroicons:language'
-                : type === 'translation' && text === 'unknown'
+                : (type === 'translation' && text === 'unknown') ||
+                  type === 'unknown'
                 ? 'heroicons:x-mark'
                 : 'heroicons:check'
             "
             class="w-3 h-3"
             :class="
-              type === 'translation' && text !== 'unknown'
+              (type === 'translation' && text !== 'unknown') ||
+              type === 'sentence'
                 ? 'text-gray-600'
-                : type === 'translation' && text === 'unknown'
+                : (type === 'translation' && text === 'unknown') ||
+                  type === 'unknown'
                 ? 'text-red-600'
                 : 'text-green-600'
             "
           />
         </span>
-        {{ text === "unknown" ? "unknown" : text }}
+        {{
+          (text === "unknown" && type !== "unknown") || type === "unknown"
+            ? "unknown"
+            : text
+        }}
       </span>
       <span
-        v-if="explanation || (type === 'translation' && text === 'unknown')"
+        v-if="
+          explanation ||
+          (type === 'translation' && text === 'unknown') ||
+          type === 'unknown'
+        "
         class="relative group/info"
         :class="
-          type === 'translation' && text === 'unknown' ? 'cursor-pointer' : ''
+          (type === 'translation' && text === 'unknown') || type === 'unknown'
+            ? 'cursor-pointer'
+            : ''
         "
         @mouseenter="
-          type === 'translation' && text === 'unknown'
+          (type === 'translation' && text === 'unknown') || type === 'unknown'
             ? null
             : (isHoveringInfo = true)
         "
         @mouseleave="
-          type === 'translation' && text === 'unknown'
+          (type === 'translation' && text === 'unknown') || type === 'unknown'
             ? null
             : (isHoveringInfo = false)
         "
         @click="
-          type === 'translation' && text === 'unknown'
+          (type === 'translation' && text === 'unknown') || type === 'unknown'
             ? ($emit('deleteWord'), $event.stopPropagation())
             : null
         "
@@ -86,7 +113,8 @@
           <path
             v-if="
               (type === 'correction' && text === 'null') ||
-              (type === 'translation' && text === 'unknown')
+              (type === 'translation' && text === 'unknown') ||
+              type === 'unknown'
             "
             stroke-linecap="round"
             stroke-linejoin="round"

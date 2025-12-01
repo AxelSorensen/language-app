@@ -40,8 +40,12 @@ export const useWords = () => {
 
       updateWord((w) => ({
         ...w,
-        correction: spellResult.correction,
-        translation: translateResult.translation,
+        correction:
+          spellResult.type === "correction" ? spellResult.correction : null,
+        translation:
+          spellResult.type === "unknown_word"
+            ? "unknown"
+            : translateResult.translation,
         status: "checked",
       }));
       console.log("Status set to checked for word:", word.text);

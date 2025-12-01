@@ -4,6 +4,7 @@
       <LanguageSelector @languageChange="handleLanguageChange" />
 
       <button
+        v-if="hasText"
         @click="clearWords"
         class="fixed top-4 right-4 cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors z-50 flex items-center gap-2"
         title="Clear all text"
@@ -30,6 +31,7 @@
         <div class="mx-auto text-2xl">
           <ModularInput
             ref="modularInputRef"
+            :key="wordsKey"
             :words="words"
             :translateMode="translateMode"
             :isTranslating="isTranslating"
@@ -79,8 +81,25 @@ const languages = ref({
 
 const { words, processWord } = useWords();
 
+const wordsKey = ref(0);
+
+const hasText = computed(() => words.value.some((w) => w.text.trim() !== ""));
+
 const clearWords = () => {
-  words.value = [];
+  words.value = [
+    {
+      text: "",
+      id: crypto.randomUUID(),
+      correction: null,
+      translation: null,
+      status: "idle",
+      sentenceError: null,
+    },
+  ];
+  wordsKey.value++;
+  nextTick(() => {
+    modularInputRef.value?.focusOnPosition(0, 0);
+  });
 };
 
 const focusInput = () => {
@@ -124,13 +143,14 @@ const handleProcessCurrent = (id: string) => {
 };
 
 const handleDeleteWord = (idx: number) => {
-  words.value.splice(idx, 1);
+  words.value[idx].text = "";
+  words.value[idx].correction = null;
+  words.value[idx].translation = null;
+  words.value[idx].status = "empty";
+  words.value[idx].sentenceError = null;
   // Handle focus
   nextTick(() => {
-    if (words.value.length > 0) {
-      const focusIdx = Math.min(idx, words.value.length - 1);
-      modularInputRef.value.focusOnEnd(focusIdx);
-    }
+    modularInputRef.value.focusOnEnd(idx);
   });
 };
 
