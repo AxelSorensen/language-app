@@ -298,10 +298,16 @@ const focusOnPosition = (idx: number, start: number, end: number) => {
   });
 };
 
+const focusCurrent = () => {
+  const input = inputsRefs.value[currentFocusedIdx.value];
+  if (input) input.focus();
+};
+
 defineExpose({
   focusOn,
   focusOnEnd,
   focusOnPosition,
+  focusCurrent,
   translateInputRef,
   handleSpace,
   handleBackspace,

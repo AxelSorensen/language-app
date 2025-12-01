@@ -39,13 +39,6 @@ export function useKeyboard(): KeyboardComposable {
     document.dispatchEvent(event);
   };
 
-  const refocusCurrentInput = () => {
-    // Refocus the current input when keyboard is clicked
-    nextTick(() => {
-      // Focus logic removed
-    });
-  };
-
   const toggleTranslateMode = () => {
     state.value.translateMode = !state.value.translateMode;
     if (state.value.translateMode) {
@@ -118,7 +111,6 @@ export function useKeyboard(): KeyboardComposable {
       handleWordKeydown: () => {}, // stub
       handleTranslateKeydown: () => {}, // stub
       pressKey,
-      refocusCurrentInput,
       toggleTranslateMode,
       setKeyboardVisibility,
       setCurrentWordIndex,
