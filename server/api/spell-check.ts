@@ -15,21 +15,19 @@ export default defineEventHandler(async (event) => {
   const extraInstruction = WORD_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
 
   // Construct prompt for OpenAI with explicit structured output instructions
-  const prompt = `You are a spelling and translation assistant. Analyze the specified word: "${word}" in the context: "${context}".
+  const prompt = `You are a spelling correction assistant. Analyze the specified word: "${word}" in the context: "${context}".
 
-You are translating from ${targetLanguage} to ${NATIVE_LANGUAGE}.
+You are working with ${targetLanguage}.
 
 Return:
 - word: the original word
 - correction: the corrected spelling (ONLY if it's a clear spelling error). If correctly spelled, set to null.
-- translation: the ${NATIVE_LANGUAGE} translation. If the word is unknown or ambiguous, set to "unknown".
+- explanation: brief explanation of the spelling error (only if correction provided, otherwise null).
 
 IMPORTANT RULES:
 - Correct spelling for common errors (e.g., "teh" -> "the").
 - Corrections should be in ${targetLanguage}.
-- Provide translation for known words in context.
-- Set translation to "unknown" only if the word is genuinely unrecognized or has multiple meanings that can't be disambiguated.
-- Prefer providing translation over marking as unknown.
+- Only provide correction if it's a very obvious spelling mistake.
 
 Return a JSON object.`;
   const input = word;
@@ -50,12 +48,8 @@ Return a JSON object.`;
         description:
           "Brief explanation of the spelling error (only if correction provided, otherwise null)",
       },
-      translation: {
-        type: "string",
-        description: `${NATIVE_LANGUAGE} translation or "unknown"`,
-      },
     },
-    required: ["word", "correction", "explanation", "translation"],
+    required: ["word", "correction", "explanation"],
     additionalProperties: false,
   };
   const result = await llm_service.generate(
@@ -74,8 +68,6 @@ Return a JSON object.`;
         : null;
     // Clear explanation if no correction
     result.explanation = result.correction ? result.explanation : null;
-    // Set translation to "unknown" if null
-    if (!result.translation) result.translation = "unknown";
   }
   console.log("Filtered result:", result);
   return result;

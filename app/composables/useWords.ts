@@ -19,7 +19,10 @@ export const useWords = () => {
     const updateWord = (updater: (w: Word) => Word) => {
       const index = words.value.findIndex((w) => w.id === id);
       if (index !== -1) {
-        words.value[index] = updater(words.value[index]);
+        const currentWord = words.value[index];
+        if (currentWord) {
+          words.value[index] = updater(currentWord);
+        }
       }
     };
 
@@ -28,11 +31,16 @@ export const useWords = () => {
     console.log("Status set to pending for word:", word.text);
 
     try {
-      const result = await LanguageService.spellCheck(word.text, fullText);
+      // Call spell-check and translation separately
+      const [spellResult, translateResult] = await Promise.all([
+        LanguageService.spellCheck(word.text, fullText),
+        LanguageService.wordTranslate(word.text, fullText),
+      ]);
+
       updateWord((w) => ({
         ...w,
-        correction: result.correction,
-        translation: result.translation,
+        correction: spellResult.correction,
+        translation: translateResult.translation,
         status: "checked",
       }));
       console.log("Status set to checked for word:", word.text);

@@ -36,6 +36,13 @@ export class LanguageService {
     });
   }
 
+  static async wordTranslate(input: string, context: string) {
+    return $fetch(`/api/word-translate`, {
+      method: "POST",
+      body: { input, context },
+    });
+  }
+
   static async getSentences(language: string) {
     return $fetch(`/api/sentences`, {
       method: "GET",
