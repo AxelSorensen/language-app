@@ -2,6 +2,7 @@
   <div class="flex">
     <div v-for="(word, idx) in words" :key="word.id" class="relative group">
       <input
+        autofocus
         :ref="(el) => setInputRef(idx, el)"
         v-model="word.text"
         :placeholder="idx === 0 && words.length === 1 ? 'Start writing...' : ''"

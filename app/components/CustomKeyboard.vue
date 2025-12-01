@@ -42,19 +42,19 @@
     <div class="flex flex-row w-full gap-1 mb-1 sm:mb-2 relative">
       <KeyboardKey
         key="key-shift"
-        keyValue="{shift}"
-        :pressed="pressedKeys.has('{shift}')"
+        keyValue="Shift"
+        :pressed="pressedKeys.has('Shift')"
         :buttonClass="[
           'keyboard-key flex-[1.5] min-w-0 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border shadow-sm',
           keyboardState.isCapsLock
             ? 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 border-gray-400'
             : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 border-gray-300',
-          pressedKeys.has('{shift}') ? 'bg-gray-400 pressed' : '',
+          pressedKeys.has('Shift') ? 'bg-gray-400 pressed' : '',
         ]"
         @press="handleShiftPress"
-        @release="handleKeyUp"
+        @release="handleShiftRelease"
       >
-        ⇧
+        {{ isPermanentCaps ? '⇪' : '⇧' }}
       </KeyboardKey>
       <KeyboardKey
         v-for="key in ['Z', 'X', 'C', 'V', 'B', 'N', 'M']"
@@ -72,11 +72,11 @@
       </KeyboardKey>
       <KeyboardKey
         key="key-backspace"
-        keyValue="{backspace}"
-        :pressed="pressedKeys.has('{backspace}')"
+        keyValue="Backspace"
+        :pressed="pressedKeys.has('Backspace')"
         :buttonClass="[
           'keyboard-key flex-[1.5] min-w-0 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('{backspace}') ? 'bg-gray-300 pressed' : '',
+          pressedKeys.has('Backspace') ? 'bg-gray-300 pressed' : '',
         ]"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -89,14 +89,14 @@
     <div class="flex flex-row w-full gap-1 relative">
       <KeyboardKey
         key="key-tab"
-        keyValue="{tab}"
-        :pressed="pressedKeys.has('{tab}')"
+        keyValue="Tab"
+        :pressed="pressedKeys.has('Tab')"
         :buttonClass="[
           'keyboard-key w-full font-medium py-3 sm:py-4 rounded-md transition-all duration-150 border shadow-sm flex items-center justify-center',
           translateModeState.translateMode
             ? 'bg-purple-300 hover:bg-purple-400 text-purple-900 border-purple-400'
             : 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
-          pressedKeys.has('{tab}') ? 'bg-purple-400 pressed' : '',
+          pressedKeys.has('Tab') ? 'bg-purple-400 pressed' : '',
         ]"
         style="flex: 1.2 1 0%"
         @press="handleKeyDown"
@@ -175,11 +175,11 @@
       </KeyboardKey>
       <KeyboardKey
         key="key-space"
-        keyValue="{space}"
-        :pressed="pressedKeys.has('{space}')"
+        keyValue=" "
+        :pressed="pressedKeys.has(' ')"
         :buttonClass="[
           'keyboard-key w-full bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('{space}') ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has(' ') ? 'bg-gray-200 pressed' : '',
         ]"
         style="flex: 5 1 0%"
         @press="handleKeyDown"
@@ -203,11 +203,11 @@
       </KeyboardKey>
       <KeyboardKey
         key="key-enter"
-        keyValue="{enter}"
-        :pressed="pressedKeys.has('{enter}')"
+        keyValue="Enter"
+        :pressed="pressedKeys.has('Enter')"
         :buttonClass="[
           'keyboard-key w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('{enter}') ? 'bg-gray-300 pressed' : '',
+          pressedKeys.has('Enter') ? 'bg-gray-300 pressed' : '',
         ]"
         style="flex: 1.2 1 0%"
         @press="handleKeyDown"
@@ -234,17 +234,48 @@ const deleteInterval = ref(null);
 const deleteTimeout = ref(null);
 const deleteSpeedUpTimeout = ref(null);
 const hasAddedTextInTranslateMode = ref(false);
+const isPermanentCaps = ref(false);
+const shiftTimeout = ref(null);
 const { state: translateModeState } = useTranslateMode();
 // Keyboard state
 
 const { state: keyboardState, actions: keyboardActions } = useKeyboard();
 
+const emit = defineEmits(["on-key-press"]);
+
 function handleKeyDown(key) {
   keyboardActions.pressKey(key);
+  emit("on-key-press", key);
+  // If caps lock is on and not permanent, and a letter was pressed, turn it off
+  if (!isPermanentCaps.value && keyboardState.value.isCapsLock && key.length === 1 && /[a-zA-Z]/.test(key)) {
+    keyboardState.value.isCapsLock = false;
+  }
 }
 
 function handleShiftPress() {
-  keyboardActions.toggleCapsLock();
+  if (isPermanentCaps.value) {
+    // If permanent caps is on, short press turns it off
+    isPermanentCaps.value = false;
+    keyboardState.value.isCapsLock = false;
+  } else if (keyboardState.value.isCapsLock) {
+    // If sticky caps is on, short press turns it off
+    keyboardState.value.isCapsLock = false;
+  } else {
+    // Short press: sticky shift
+    keyboardState.value.isCapsLock = true;
+    // Long press: turn on permanent caps
+    shiftTimeout.value = setTimeout(() => {
+      isPermanentCaps.value = true;
+      keyboardState.value.isCapsLock = true;
+    }, 500);
+  }
+}
+
+function handleShiftRelease() {
+  if (shiftTimeout.value) {
+    clearTimeout(shiftTimeout.value);
+    shiftTimeout.value = null;
+  }
 }
 </script>
 
