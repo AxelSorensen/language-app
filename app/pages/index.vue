@@ -27,7 +27,7 @@
     </template>
 
     <template #content>
-      <div class="flex relative items-center h-full">
+      <div class="flex relative items-center p-4 h-full">
         <div class="mx-auto text-2xl">
           <ModularInput
             ref="modularInputRef"

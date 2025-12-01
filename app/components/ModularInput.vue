@@ -1,5 +1,8 @@
 <template>
-  <div class="flex" :class="{ 'animate-pulse': isCheckingSentence }">
+  <div
+    class="flex flex-wrap max-w-[800px]"
+    :class="{ 'animate-pulse': isCheckingSentence }"
+  >
     <div
       v-for="(word, idx) in words || []"
       :key="word.id"
