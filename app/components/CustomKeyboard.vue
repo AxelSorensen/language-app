@@ -54,7 +54,7 @@
         @press="handleShiftPress"
         @release="handleShiftRelease"
       >
-        {{ isPermanentCaps ? '⇪' : '⇧' }}
+        {{ isPermanentCaps ? "⇪" : "⇧" }}
       </KeyboardKey>
       <KeyboardKey
         v-for="key in ['Z', 'X', 'C', 'V', 'B', 'N', 'M']"
@@ -247,7 +247,12 @@ function handleKeyDown(key) {
   keyboardActions.pressKey(key);
   emit("on-key-press", key);
   // If caps lock is on and not permanent, and a letter was pressed, turn it off
-  if (!isPermanentCaps.value && keyboardState.value.isCapsLock && key.length === 1 && /[a-zA-Z]/.test(key)) {
+  if (
+    !isPermanentCaps.value &&
+    keyboardState.value.isCapsLock &&
+    key.length === 1 &&
+    /[a-zA-Z]/.test(key)
+  ) {
     keyboardState.value.isCapsLock = false;
   }
 }
