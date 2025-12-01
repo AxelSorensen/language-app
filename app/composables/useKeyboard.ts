@@ -42,14 +42,7 @@ export function useKeyboard(): KeyboardComposable {
   const refocusCurrentInput = () => {
     // Refocus the current input when keyboard is clicked
     nextTick(() => {
-      if (
-        state.value.currentWordIndex !== null &&
-        state.value.currentWordIndex >= 0 &&
-        state.value.currentWordIndex < words.value.length &&
-        wordRefs.value[state.value.currentWordIndex]
-      ) {
-        wordRefs.value[state.value.currentWordIndex].focus();
-      }
+      // Focus logic removed
     });
   };
 
@@ -57,9 +50,6 @@ export function useKeyboard(): KeyboardComposable {
     state.value.translateMode = !state.value.translateMode;
     if (state.value.translateMode) {
       state.value.translateInputFocused = true;
-      nextTick(() => {
-        translateInputRef.value?.focus();
-      });
     } else {
       state.value.translateInputFocused = false;
     }
@@ -101,7 +91,7 @@ export function useKeyboard(): KeyboardComposable {
           text: "",
         });
         nextTick(() => {
-          wordRefs.value[currentIdx + parts.length]?.focus();
+          // Focus logic removed
         });
       } else {
         // Just one word followed by space(s) - create new empty input

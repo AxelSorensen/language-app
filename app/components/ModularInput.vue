@@ -3,7 +3,7 @@
     <div v-for="(word, idx) in words" :key="word.id" class="relative group">
       <input
         autofocus
-        :ref="(el) => setInputRef(idx, el)"
+        :ref="(el) => setInputRef(idx, el as HTMLInputElement)"
         v-model="word.text"
         :placeholder="idx === 0 && words.length === 1 ? 'Start writing...' : ''"
         :class="[
@@ -18,6 +18,7 @@
         @input="saveSelection(idx)"
         @keydown="handleKeydown($event, idx)"
       />
+
       <SimpleTooltip
         :text="word.correction || word.translation || ''"
         :type="word.correction ? 'correction' : 'translation'"
@@ -26,6 +27,21 @@
         @deleteWord="$emit('delete-word', idx)"
       />
     </div>
+    <input
+      inputmode="none"
+      v-if="translateMode || isTranslating"
+      ref="translateInputRef"
+      class="mr-1 outline-none border-none field-sizing-content text-2xl font-sans text-purple-500"
+      :class="[isTranslating ? 'animate-pulse' : '']"
+      placeholder="words to translate..."
+      :value="wordsToTranslate"
+      @input="
+        $emit(
+          'update:wordsToTranslate',
+          ($event.target as HTMLInputElement).value
+        )
+      "
+    />
   </div>
 </template>
 
@@ -36,6 +52,9 @@ import { useState } from "#app";
 
 interface Props {
   words?: any[]; // or Word[]
+  translateMode?: boolean;
+  isTranslating?: boolean;
+  wordsToTranslate?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -49,7 +68,10 @@ const emit = defineEmits<{
   "process-current": [id: string];
   "delete-word": [index: number];
   "check-sentence": [];
+  "update:wordsToTranslate": [value: string];
 }>();
+
+const translateInputRef = ref<HTMLInputElement>();
 
 const inputsRefs = ref<HTMLInputElement[]>([]);
 const setInputRef = (idx: number, el: HTMLInputElement | null) => {
@@ -144,7 +166,14 @@ const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
 const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
   const hasSelection = inputEl.selectionStart !== inputEl.selectionEnd;
   if (hasSelection) {
-    // Allow default delete for selection
+    // Delete selection
+    const start = inputEl.selectionStart || 0;
+    const end = inputEl.selectionEnd || 0;
+    words[idx].text =
+      words[idx].text.slice(0, start) + words[idx].text.slice(end);
+    inputEl.value = words[idx].text;
+    inputEl.selectionStart = inputEl.selectionEnd = start;
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
     return;
   }
   if (!words[idx].text && idx > 0) {
@@ -171,10 +200,24 @@ const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
         prevInput.setSelectionRange(len, len);
       }
     });
+  } else {
+    // Delete previous character
+    const start = inputEl.selectionStart || 0;
+    if (start > 0) {
+      words[idx].text =
+        words[idx].text.slice(0, start - 1) + words[idx].text.slice(start);
+      inputEl.value = words[idx].text;
+      inputEl.selectionStart = inputEl.selectionEnd = start - 1;
+      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   }
 };
 
-const handleArrowLeft = (inputEl: HTMLInputElement, idx: number) => {
+const handleArrowLeft = (
+  event: KeyboardEvent,
+  inputEl: HTMLInputElement,
+  idx: number
+) => {
   if (inputEl.selectionStart === 0 && idx > 0) {
     event.preventDefault();
     const prevInput = inputsRefs.value[idx - 1];
@@ -186,7 +229,11 @@ const handleArrowLeft = (inputEl: HTMLInputElement, idx: number) => {
   }
 };
 
-const handleArrowRight = (inputEl: HTMLInputElement, idx: number) => {
+const handleArrowRight = (
+  event: KeyboardEvent,
+  inputEl: HTMLInputElement,
+  idx: number
+) => {
   if (
     inputEl.selectionStart === inputEl.value.length &&
     idx < words.length - 1
@@ -222,9 +269,9 @@ const handleKeydown = (event: KeyboardEvent, idx: number) => {
       // Allow default backspace
     }
   } else if (event.key === "ArrowLeft") {
-    handleArrowLeft(inputEl, idx);
+    handleArrowLeft(event, inputEl, idx);
   } else if (event.key === "ArrowRight") {
-    handleArrowRight(inputEl, idx);
+    handleArrowRight(event, inputEl, idx);
   }
 };
 
@@ -261,5 +308,11 @@ const focusOn = (idx: number) => {
   });
 };
 
-defineExpose({ focusOn });
+defineExpose({
+  focusOn,
+  translateInputRef,
+  handleSpace,
+  handleBackspace,
+  inputsRefs,
+});
 </script>
