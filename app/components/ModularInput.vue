@@ -118,30 +118,59 @@ watch(
   { immediate: true }
 );
 
+const breakWord = (
+  inputEl: HTMLInputElement,
+  idx: number,
+  cursorPos: number
+) => {
+  const text = words[idx].text;
+  const before = text.slice(0, cursorPos);
+  const after = text.slice(cursorPos);
+  words[idx].text = before;
+  words[idx].status = "idle";
+  words.splice(idx + 1, 0, {
+    text: after,
+    id: crypto.randomUUID(),
+    correction: null,
+    translation: null,
+    status: "idle",
+  });
+  emit("input-created", idx);
+  // Process both words from the split
+  emit("process-current", words[idx].id);
+  emit("process-current", words[idx + 1].id);
+  // Focus the new input at beginning
+  nextTick(() => {
+    const newInput = inputsRefs.value[idx + 1];
+    if (newInput) {
+      newInput.focus();
+      newInput.setSelectionRange(0, 0);
+    }
+  });
+};
+
+const mergeWords = (idx: number) => {
+  const currentText = words[idx].text;
+  words[idx - 1].text += currentText;
+  words.splice(idx, 1);
+  words[idx - 1].status = "idle";
+  // Process the merged word
+  emit("process-current", words[idx - 1].id);
+  // Focus the merged input at the merge point
+  nextTick(() => {
+    const prevInput = inputsRefs.value[idx - 1];
+    if (prevInput) {
+      prevInput.focus();
+      const len = words[idx - 1]?.text.length - currentText.length || 0;
+      prevInput.setSelectionRange(len, len);
+    }
+  });
+};
+
 const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
   const cursorPos = inputEl.selectionStart || 0;
-  const text = words[idx].text;
-  if (cursorPos < text.length) {
-    // Split the word at cursor
-    const before = text.slice(0, cursorPos);
-    const after = text.slice(cursorPos);
-    words[idx].text = before;
-    words.splice(idx + 1, 0, {
-      text: after,
-      id: crypto.randomUUID(),
-      correction: null,
-      translation: null,
-      status: "idle",
-    });
-    emit("input-created", idx);
-    // Focus the new input at beginning
-    nextTick(() => {
-      const newInput = inputsRefs.value[idx + 1];
-      if (newInput) {
-        newInput.focus();
-        newInput.setSelectionRange(0, 0);
-      }
-    });
+  if (cursorPos < words[idx].text.length) {
+    breakWord(inputEl, idx, cursorPos);
   } else if (words[idx].text.trim()) {
     // Add new input after if at end
     words.splice(idx + 1, 0, {
@@ -189,17 +218,7 @@ const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
     });
   } else if (inputEl.selectionStart === 0 && idx > 0) {
     // Merge with previous input
-    const currentText = words[idx].text;
-    words[idx - 1].text += currentText;
-    words.splice(idx, 1);
-    nextTick(() => {
-      const prevInput = inputsRefs.value[idx - 1];
-      if (prevInput) {
-        prevInput.focus();
-        const len = words[idx - 1]?.text.length - currentText.length || 0;
-        prevInput.setSelectionRange(len, len);
-      }
-    });
+    mergeWords(idx);
   } else {
     // Delete previous character
     const start = inputEl.selectionStart || 0;
