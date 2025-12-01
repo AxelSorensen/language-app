@@ -500,7 +500,8 @@ function handleKeyPress(key: string, isVirtual = false) {
       const end = activeElement.selectionEnd || 0;
       const value = activeElement.value;
       activeElement.value = value.slice(0, start) + key + value.slice(end);
-      activeElement.selectionStart = activeElement.selectionEnd = start + key.length;
+      activeElement.selectionStart = activeElement.selectionEnd =
+        start + key.length;
       activeElement.dispatchEvent(new Event("input", { bubbles: true }));
       activeElement.focus();
     }
