@@ -323,9 +323,12 @@ const handleMergeWords = (idx: number) => {
     words.value[idx - 1].id,
     words.value.map((w) => w.text).join(" ")
   );
-  // Focus the merged input at the end
+  // Focus the merged input at the merge point
   nextTick(() => {
-    modularInputRef.value.focusOnEnd(idx - 1);
+    const mergedIdx = idx - 1;
+    const mergedWord = words.value[mergedIdx];
+    const mergePoint = mergedWord.text.length - currentText.length;
+    modularInputRef.value.focusOnPosition(mergedIdx, mergePoint, mergePoint);
   });
 };
 
@@ -488,6 +491,15 @@ async function handleTab() {
 function handleKeyPress(key: string, isVirtual = false) {
   // Handle virtual keyboard key presses
   console.log("Key pressed:", key);
+  if (translateMode.value && key === "Backspace") {
+    const activeElement = document.activeElement as HTMLInputElement;
+    if (
+      activeElement &&
+      activeElement !== modularInputRef.value?.translateInputRef
+    ) {
+      return true; // Prevent backspace on main inputs in translate mode
+    }
+  }
   if (key === "Tab") {
     handleTab();
     return true;
@@ -545,6 +557,7 @@ function handleKeyPress(key: string, isVirtual = false) {
           activeElement.selectionStart = activeElement.selectionEnd = start - 1;
         }
         activeElement.dispatchEvent(new Event("input", { bubbles: true }));
+        return true; // Prevent default browser behavior
       }
     } else if (key.length > 1) {
       // Other special keys: dispatch keydown event for ModularInput to handle
