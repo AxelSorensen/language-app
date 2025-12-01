@@ -9,6 +9,8 @@
         ? ' text-red-600'
         : type === 'unknown'
         ? ' text-red-600'
+        : type === 'sentence'
+        ? ' text-green-600 cursor-pointer hover:bg-green-50'
         : ` text-green-600 cursor-pointer ${
             !isHoveringInfo ? 'hover:bg-green-50' : ''
           }`,
@@ -39,8 +41,7 @@
         <span
           class="inline-flex items-center justify-center w-5 h-5 rounded-full"
           :class="
-            (type === 'translation' && text !== 'unknown') ||
-            type === 'sentence'
+            type === 'translation' && text !== 'unknown'
               ? 'bg-gray-200'
               : (type === 'translation' && text === 'unknown') ||
                 type === 'unknown'
@@ -50,9 +51,10 @@
         >
           <Icon
             :name="
-              (type === 'translation' && text !== 'unknown') ||
-              type === 'sentence'
+              type === 'translation' && text !== 'unknown'
                 ? 'heroicons:language'
+                : type === 'sentence'
+                ? 'heroicons:check'
                 : (type === 'translation' && text === 'unknown') ||
                   type === 'unknown'
                 ? 'heroicons:x-mark'
@@ -60,9 +62,10 @@
             "
             class="w-3 h-3"
             :class="
-              (type === 'translation' && text !== 'unknown') ||
-              type === 'sentence'
+              type === 'translation' && text !== 'unknown'
                 ? 'text-gray-600'
+                : type === 'sentence'
+                ? 'text-green-600'
                 : (type === 'translation' && text === 'unknown') ||
                   type === 'unknown'
                 ? 'text-red-600'

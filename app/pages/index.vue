@@ -36,6 +36,7 @@
             :translateMode="translateMode"
             :isTranslating="isTranslating"
             :wordsToTranslate="wordsToTranslate"
+            :isCheckingSentence="isCheckingSentence"
             @input-created="handleInputCreated"
             @process-current="handleProcessCurrent"
             @delete-word="handleDeleteWord"
@@ -119,6 +120,8 @@ if (words.value.length === 0) {
 
 const modularInputRef = ref();
 
+const isCheckingSentence = ref(false);
+
 const previousSelection = ref<{
   idx: number;
   start: number;
@@ -143,14 +146,11 @@ const handleProcessCurrent = (id: string) => {
 };
 
 const handleDeleteWord = (idx: number) => {
-  words.value[idx].text = "";
-  words.value[idx].correction = null;
-  words.value[idx].translation = null;
-  words.value[idx].status = "empty";
-  words.value[idx].sentenceError = null;
-  // Handle focus
+  words.value.splice(idx, 1);
+  // Focus the previous word at end, or first if none
   nextTick(() => {
-    modularInputRef.value.focusOnEnd(idx);
+    const focusIdx = idx > 0 ? idx - 1 : 0;
+    modularInputRef.value.focusOnEnd(focusIdx);
   });
 };
 
@@ -172,21 +172,31 @@ const handleApplySentenceCorrection = () => {
   const wrongWords = words.value.filter((w) => w.sentenceError);
   if (wrongWords.length > 0) {
     const correction = wrongWords[0].sentenceError!.correction;
-    const correctionWords = correction.split(" ");
-    if (correctionWords.length === wrongWords.length) {
-      wrongWords.forEach((w, i) => {
-        w.text = correctionWords[i];
-        w.sentenceError = null;
-        w.translation = null;
-        w.status = "idle";
-        processWord(w.id, words.value.map((w) => w.text).join(" "));
-      });
-      // Focus on the last corrected word
-      nextTick(() => {
-        const lastIdx = words.value.indexOf(wrongWords[wrongWords.length - 1]);
-        modularInputRef.value.focusOnEnd(lastIdx);
-      });
+    const correctionWords = correction
+      .split(" ")
+      .filter((word) => word.trim() !== "");
+    const startIdx = words.value.indexOf(wrongWords[0]);
+    words.value.splice(
+      startIdx,
+      wrongWords.length,
+      ...correctionWords.map((word) => ({
+        text: word,
+        id: crypto.randomUUID(),
+        correction: null,
+        translation: null,
+        status: "idle",
+        sentenceError: null,
+      }))
+    );
+    // Process all new words
+    const fullText = words.value.map((w) => w.text).join(" ");
+    for (let i = startIdx; i < startIdx + correctionWords.length; i++) {
+      processWord(words.value[i].id, fullText);
     }
+    // Focus on the last affected word
+    nextTick(() => {
+      modularInputRef.value.focusOnEnd(startIdx + correctionWords.length - 1);
+    });
   }
 };
 
@@ -257,6 +267,7 @@ const handleAddWordAfter = (idx: number) => {
 };
 
 const handleCheckSentence = async () => {
+  isCheckingSentence.value = true;
   const fullText = words.value.map((w) => w.text).join(" ");
   if (fullText.trim()) {
     try {
@@ -267,7 +278,7 @@ const handleCheckSentence = async () => {
       console.log("Sentence correction:", result);
       // Clear previous sentence errors
       words.value.forEach((w) => (w.sentenceError = null));
-      if (result.wrong_text) {
+      if (result.type === "correction") {
         const startIdx = fullText.indexOf(result.wrong_text);
         if (startIdx !== -1) {
           const endIdx = startIdx + result.wrong_text.length;
@@ -289,6 +300,7 @@ const handleCheckSentence = async () => {
       console.error("Sentence check failed:", error);
     }
   }
+  isCheckingSentence.value = false;
 };
 
 const translateModeComp = useTranslateMode();

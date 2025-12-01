@@ -30,6 +30,12 @@ Do NOT flag:
 
 Return the wrong words and their correction. Return the exact text from the sentence that has grammatical errors and what it should be. Also provide a very brief explanation of the grammar rule violated.
 
+Return:
+- type: "valid" | "correction"
+- wrong_text: the exact wrong words if type is "correction", otherwise empty string
+- correction: what it should be if type is "correction", otherwise empty string
+- explanation: brief explanation if type is "correction", otherwise empty string
+
 Examples of GRAMMAR errors to flag:
 - "ella puedo hablar" → wrong_text: "puedo", correction: "puede", explanation: "Subject-verb agreement error"
 - "ella puedo hablo" → wrong_text: "puedo hablo", correction: "puede hablar", explanation: "Incorrect verb forms"
@@ -48,6 +54,12 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
   const schema = {
     type: "object",
     properties: {
+      type: {
+        type: "string",
+        enum: ["valid", "correction"],
+        description:
+          "Whether there are grammar errors: valid (no errors), correction (grammar fix needed)",
+      },
       wrong_text: {
         type: "string",
         description:
@@ -64,7 +76,7 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
           "A very brief explanation of why this correction is needed, or empty string if no errors",
       },
     },
-    required: ["wrong_text", "correction", "explanation"],
+    required: ["type", "wrong_text", "correction", "explanation"],
     additionalProperties: false,
   };
 

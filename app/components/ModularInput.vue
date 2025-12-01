@@ -1,5 +1,5 @@
 <template>
-  <div class="flex">
+  <div class="flex" :class="{ 'animate-pulse': isCheckingSentence }">
     <div
       v-for="(word, idx) in words || []"
       :key="word.id"
@@ -8,6 +8,7 @@
       <input
         v-if="!(!word.text && (isTranslating || translateMode))"
         autofocus
+        inputmode="none"
         :ref="(el) => setInputRef(idx, el as HTMLInputElement)"
         v-model="word.text"
         :placeholder="idx === 0 && words.length === 1 ? 'Start writing...' : ''"
@@ -15,7 +16,7 @@
           'mr-1 outline-none border-none field-sizing-content',
           { 'animate-pulse': word.status === 'pending' },
           word.correction
-            ? 'text-green-600'
+            ? 'text-orange-400'
             : word.translation === 'unknown'
             ? 'text-red-600'
             : '',
@@ -87,10 +88,12 @@ interface Props {
   translateMode?: boolean;
   isTranslating?: boolean;
   wordsToTranslate?: string;
+  isCheckingSentence?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   words: () => [],
+  isCheckingSentence: false,
 });
 
 const words = props.words;

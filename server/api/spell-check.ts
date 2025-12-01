@@ -31,6 +31,7 @@ IMPORTANT RULES:
 - If the word is valid in other languages but not in ${targetLanguage}, set type to "unknown_word"
 - Do not consider verb forms, plurals, or grammatical variations
 - Only provide correction for obvious non-words or completely wrong spellings
+- Preserve punctuation: include trailing commas, periods, etc., in corrections if present in the original word
 
 Return a JSON object.`;
   const input = word;

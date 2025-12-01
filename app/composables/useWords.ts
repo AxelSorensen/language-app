@@ -17,6 +17,11 @@ export const useWords = () => {
     const word = words.value.find((w) => w.id === id);
     if (!word) return;
 
+    if (!fullText.trim()) {
+      words.value = [];
+      return;
+    }
+
     const updateWord = (updater: (w: Word) => Word) => {
       const index = words.value.findIndex((w) => w.id === id);
       if (index !== -1) {
