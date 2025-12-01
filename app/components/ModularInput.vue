@@ -9,11 +9,17 @@
       class="relative group"
     >
       <input
-        v-if="!(!word.text && (isTranslating || translateMode))"
         autofocus
         inputmode="none"
         :ref="(el) => setInputRef(idx, el as HTMLInputElement)"
         v-model="word.text"
+        v-if="
+          !(
+            (translateMode || isTranslating) &&
+            idx === currentFocusedIdx &&
+            word.text.trim() === ''
+          )
+        "
         :placeholder="idx === 0 && words.length === 1 ? 'Start writing...' : ''"
         :class="[
           'mr-1 outline-none border-none field-sizing-content',
@@ -29,7 +35,32 @@
         ]"
         @input="saveSelection(idx)"
         @focus="currentFocusedIdx = idx"
-        @keydown="handleKeydown($event, idx)"
+        @keydown="handleKeyDown($event, idx)"
+      />
+      <input
+        v-if="(translateMode || isTranslating) && idx === currentFocusedIdx"
+        :ref="(el) => (translateInputRef = el)"
+        autofocus
+        class="outline-none border-none field-sizing-content text-2xl font-sans text-purple-500 mr-1"
+        :class="[isTranslating ? 'animate-pulse' : '']"
+        placeholder="words to translate..."
+        :value="wordsToTranslate"
+        @click="
+          $nextTick(() =>
+            ($event.target as HTMLInputElement).setSelectionRange(
+              0,
+              ($event.target as HTMLInputElement).value.length
+            )
+          )
+        "
+        @input="
+          $emit(
+            'update:wordsToTranslate',
+            ($event.target as HTMLInputElement).value
+          )
+        "
+        @keydown="handleTranslateKeyDown"
+        @blur="$emit('blur-translate')"
       />
       <SimpleTooltip
         :text="
@@ -63,21 +94,6 @@
         @deleteWord="$emit('delete-word', idx)"
       />
     </div>
-    <input
-      inputmode="none"
-      v-if="translateMode || isTranslating"
-      ref="translateInputRef"
-      class="outline-none border-none field-sizing-content text-2xl font-sans text-purple-500"
-      :class="[isTranslating ? 'animate-pulse' : '']"
-      placeholder="words to translate..."
-      :value="wordsToTranslate"
-      @input="
-        $emit(
-          'update:wordsToTranslate',
-          ($event.target as HTMLInputElement).value
-        )
-      "
-    />
   </div>
 </template>
 
@@ -107,11 +123,9 @@ const emit = defineEmits<{
   "delete-word": [index: number];
   "apply-correction": [index: number];
   "apply-sentence-correction": [];
-  "break-word": [{ idx: number; cursorPos: number }];
-  "merge-words": [index: number];
-  "add-word-after": [index: number];
   "check-sentence": [];
   "update:wordsToTranslate": [value: string];
+  "blur-translate": [];
 }>();
 
 const translateInputRef = ref<HTMLInputElement>();
@@ -123,149 +137,13 @@ const setInputRef = (idx: number, el: HTMLInputElement | null) => {
   if (el) inputsRefs.value[idx] = el;
 };
 
-const selections = useState<Record<number, { start: number; end: number }>>(
-  "input-selections",
-  () => ({})
-);
-
 const typingTimeout = ref<NodeJS.Timeout | null>(null);
 
 const applyCorrection = (idx: number) => {
   emit("apply-correction", idx);
 };
 
-const breakWord = (
-  inputEl: HTMLInputElement,
-  idx: number,
-  cursorPos: number
-) => {
-  emit("break-word", { idx, cursorPos });
-};
-
-const mergeWords = (idx: number) => {
-  emit("merge-words", idx);
-};
-
-const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
-  const cursorPos = inputEl.selectionStart || 0;
-  if (cursorPos < words[idx].text.length) {
-    breakWord(inputEl, idx, cursorPos);
-  } else if (words[idx].text.trim()) {
-    // Process the current word before adding new
-    emit("process-current", words[idx].id);
-    // Add new input after if at end
-    emit("add-word-after", idx);
-  }
-};
-
-const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
-  const hasSelection = inputEl.selectionStart !== inputEl.selectionEnd;
-  if (hasSelection) {
-    // Delete selection
-    const start = inputEl.selectionStart || 0;
-    const end = inputEl.selectionEnd || 0;
-    words[idx].text =
-      words[idx].text.slice(0, start) + words[idx].text.slice(end);
-    inputEl.value = words[idx].text;
-    inputEl.selectionStart = inputEl.selectionEnd = start;
-    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-    return;
-  }
-  if (!words[idx].text && idx > 0) {
-    // If backspace on empty input, remove it and focus previous at end
-    emit("delete-word", idx);
-  } else if (inputEl.selectionStart === 0 && idx > 0) {
-    // Merge with previous input
-    mergeWords(idx);
-  } else {
-    // Delete previous character
-    const start = inputEl.selectionStart || 0;
-    if (start > 0) {
-      words[idx].text =
-        words[idx].text.slice(0, start - 1) + words[idx].text.slice(start);
-      inputEl.value = words[idx].text;
-      inputEl.selectionStart = inputEl.selectionEnd = start - 1;
-      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-  }
-};
-
-const handleArrowLeft = (
-  event: KeyboardEvent,
-  inputEl: HTMLInputElement,
-  idx: number
-) => {
-  if (inputEl.selectionStart === 0 && idx > 0) {
-    event.preventDefault();
-    const prevInput = inputsRefs.value[idx - 1];
-    if (prevInput) {
-      prevInput.focus();
-      const len = words[idx - 1].text.length;
-      prevInput.setSelectionRange(len, len);
-    }
-  }
-};
-
-const handleArrowRight = (
-  event: KeyboardEvent,
-  inputEl: HTMLInputElement,
-  idx: number
-) => {
-  if (
-    inputEl.selectionStart === inputEl.value.length &&
-    idx < words.length - 1
-  ) {
-    event.preventDefault();
-    const nextInput = inputsRefs.value[idx + 1];
-    if (nextInput) {
-      nextInput.focus();
-      nextInput.setSelectionRange(0, 0);
-    }
-  }
-};
-
-const handleKeydown = (event: KeyboardEvent, idx: number) => {
-  const inputEl = event.target as HTMLInputElement;
-  if (event.key === " ") {
-    event.preventDefault();
-    handleSpace(inputEl, idx);
-  } else if (event.key === ".") {
-    emit("check-sentence");
-  } else if (event.key === "Backspace") {
-    if (hasSelection(inputEl)) {
-      // Allow default delete for selection
-      return;
-    }
-    if (isEmptyInput(idx) && idx > 0) {
-      event.preventDefault();
-      handleBackspace(inputEl, idx);
-    } else if (isAtStart(inputEl, idx)) {
-      event.preventDefault();
-      handleBackspace(inputEl, idx);
-    } else {
-      // Allow default backspace
-    }
-  } else if (event.key === "ArrowLeft") {
-    handleArrowLeft(event, inputEl, idx);
-  } else if (event.key === "ArrowRight") {
-    handleArrowRight(event, inputEl, idx);
-  }
-};
-
-const hasSelection = (inputEl: HTMLInputElement) =>
-  inputEl.selectionStart !== inputEl.selectionEnd;
-const isEmptyInput = (idx: number) => idx < words.length && !words[idx].text;
-const isAtStart = (inputEl: HTMLInputElement, idx: number) =>
-  inputEl.selectionStart === 0 && idx > 0 && idx < words.length;
-
 const saveSelection = (idx: number) => {
-  const inputEl = inputsRefs.value[idx];
-  if (inputEl) {
-    selections.value[idx] = {
-      start: inputEl.selectionStart || 0,
-      end: inputEl.selectionEnd || 0,
-    };
-  }
   // Set status to idle on input
   words[idx].status = "idle";
   // Manage typing timeout
@@ -311,14 +189,35 @@ const focusCurrent = () => {
   if (input) input.focus();
 };
 
+const handleKeyDown = (event: KeyboardEvent, idx: number) => {
+  const inputEl = event.target as HTMLInputElement;
+  const cursorPos = inputEl.selectionStart || 0;
+  const wordLength = words[idx].text.length;
+
+  if (event.key === "ArrowLeft") {
+    if (cursorPos === 0 && idx > 0) {
+      event.preventDefault();
+      focusOnEnd(idx - 1);
+    }
+  } else if (event.key === "ArrowRight") {
+    if (cursorPos === wordLength && idx < words.length - 1) {
+      event.preventDefault();
+      focusOn(idx + 1);
+    }
+  }
+};
+
+const handleTranslateKeyDown = (event: KeyboardEvent) => {
+  // For translate input, handle arrows normally (no special jumping)
+};
+
 defineExpose({
   focusOn,
   focusOnEnd,
   focusOnPosition,
   focusCurrent,
   translateInputRef,
-  handleSpace,
-  handleBackspace,
   inputsRefs,
+  currentFocusedIdx,
 });
 </script>

@@ -47,6 +47,9 @@
             @add-word-after="handleAddWordAfter"
             @check-sentence="handleCheckSentence"
             @update:wordsToTranslate="wordsToTranslate = $event"
+            @blur-translate="
+              translateModeComp.state.value.translateMode = false
+            "
           />
         </div>
       </div>
@@ -55,8 +58,7 @@
     <template #keyboard>
       <CustomKeyboard
         :is-translating="isTranslating"
-        @on-key-press="handleKeyPress"
-        @keyboard-click="focusInput"
+        @on-key-press="(key) => handleKeyPress(key, true)"
       />
     </template>
   </BaseLayout>
@@ -127,6 +129,79 @@ const previousSelection = ref<{
   start: number;
   end: number;
 } | null>(null);
+
+const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
+  if (translateMode.value) return; // Do not create new words in translate mode
+
+  const word = words.value[idx];
+  if (word.text.trim() === "") return; // Do not handle space if already in an empty word
+
+  const cursorPos = inputEl.selectionStart || 0;
+  const wordLength = word.text.length;
+
+  if (cursorPos === 0) {
+    // At the beginning, just add new word before
+    words.value.splice(idx, 0, {
+      text: "",
+      id: crypto.randomUUID(),
+      correction: null,
+      translation: null,
+      status: "idle",
+      sentenceError: null,
+    });
+    nextTick(() => {
+      modularInputRef.value.focusOnPosition(idx, 0);
+    });
+  } else if (cursorPos < wordLength) {
+    // In the middle, break the word
+    handleBreakWord({ idx, cursorPos });
+  } else {
+    // At the end, process current word and add new
+    if (word.text.trim() !== "" && word.status === "idle") {
+      processWord(word.id, words.value.map((w) => w.text).join(" "));
+    }
+    words.value.splice(idx + 1, 0, {
+      text: "",
+      id: crypto.randomUUID(),
+      correction: null,
+      translation: null,
+      status: "idle",
+      sentenceError: null,
+    });
+    nextTick(() => {
+      modularInputRef.value.focusOnPosition(idx + 1, 0);
+    });
+  }
+};
+
+const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
+  const start = inputEl.selectionStart || 0;
+  const end = inputEl.selectionEnd || 0;
+  if (start === 0 && end === 0) {
+    // At start of word
+    if (idx > 0) {
+      // Merge with previous word
+      handleMergeWords(idx);
+    } else if (words.value.length > 1 && words.value[idx].text === "") {
+      // Delete empty first word if more than one
+      words.value.splice(idx, 1);
+      nextTick(() => {
+        modularInputRef.value.focusOnEnd(0);
+      });
+    }
+  } else {
+    // Delete selection or character before cursor
+    const value = inputEl.value;
+    if (start !== end) {
+      inputEl.value = value.slice(0, start) + value.slice(end);
+      inputEl.selectionStart = inputEl.selectionEnd = start;
+    } else if (start > 0) {
+      inputEl.value = value.slice(0, start - 1) + value.slice(start);
+      inputEl.selectionStart = inputEl.selectionEnd = start - 1;
+    }
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+};
 
 function handleLanguageChange(newLanguages) {
   languages.value = newLanguages;
@@ -212,6 +287,9 @@ const handleBreakWord = ({
   const after = word.text.slice(cursorPos);
   word.text = before;
   word.status = "idle";
+  word.correction = null;
+  word.translation = null;
+  word.sentenceError = null;
   words.value.splice(idx + 1, 0, {
     text: after,
     id: crypto.randomUUID(),
@@ -237,17 +315,17 @@ const handleMergeWords = (idx: number) => {
   words.value[idx - 1].text += currentText;
   words.value.splice(idx, 1);
   words.value[idx - 1].status = "idle";
+  words.value[idx - 1].correction = null;
+  words.value[idx - 1].translation = null;
+  words.value[idx - 1].sentenceError = null;
   // Process the merged word
   processWord(
     words.value[idx - 1].id,
     words.value.map((w) => w.text).join(" ")
   );
-  // Focus the merged input at the merge point
+  // Focus the merged input at the end
   nextTick(() => {
-    modularInputRef.value.focusOnPosition(
-      idx - 1,
-      words.value[idx - 1].text.length - currentText.length
-    );
+    modularInputRef.value.focusOnEnd(idx - 1);
   });
 };
 
@@ -362,46 +440,72 @@ async function handleTab() {
     return;
   }
 
-  const response = await translateModeComp.actions.translate(
-    translateModeComp.state.value.wordsToTranslate
-  );
+  // Filter out empty words from the text to translate
+  const filteredText = translateModeComp.state.value.wordsToTranslate
+    .split(" ")
+    .filter((word) => word.trim() !== "")
+    .join(" ");
+
+  const response = await translateModeComp.actions.translate(filteredText);
   console.log("Translation response:", response);
 
-  const translatedText = response.translation;
+  const translatedText = response.translation.trim();
   const newWords = translatedText
     .split(" ")
     .filter((word) => word.trim() !== "");
   if (newWords.length > 0) {
-    for (const word of newWords) {
-      words.value.push({
+    let insertIdx = words.value.length;
+    if (previousSelection.value) {
+      insertIdx = previousSelection.value.idx + 1;
+      // If the current word is empty, delete it
+      if (words.value[previousSelection.value.idx].text.trim() === "") {
+        words.value.splice(previousSelection.value.idx, 1);
+        insertIdx = previousSelection.value.idx;
+      }
+    }
+    words.value.splice(
+      insertIdx,
+      0,
+      ...newWords.map((word) => ({
         id: crypto.randomUUID(),
         text: word,
         status: "idle",
         correction: null,
         translation: null,
-      });
-    }
+      }))
+    );
     // Focus on the last added word at the end
     await nextTick();
-    modularInputRef.value.focusOnEnd(words.value.length - 1);
+    modularInputRef.value.focusOnEnd(insertIdx + newWords.length - 1);
     // Process the new translated words
     const fullText = words.value.map((w) => w.text).join(" ");
-    for (
-      let i = words.value.length - newWords.length;
-      i < words.value.length;
-      i++
-    ) {
+    for (let i = insertIdx; i < insertIdx + newWords.length; i++) {
       processWord(words.value[i].id, fullText);
     }
   }
 }
 
-function handleKeyPress(key: string) {
+function handleKeyPress(key: string, isVirtual = false) {
   // Handle virtual keyboard key presses
   console.log("Key pressed:", key);
   if (key === "Tab") {
     handleTab();
-    return;
+    return true;
+  }
+  if (key === ".") {
+    // Insert the dot manually
+    const activeElement = document.activeElement as HTMLInputElement;
+    if (activeElement && activeElement.tagName === "INPUT") {
+      const start = activeElement.selectionStart || 0;
+      const end = activeElement.selectionEnd || 0;
+      const value = activeElement.value;
+      activeElement.value = value.slice(0, start) + key + value.slice(end);
+      activeElement.selectionStart = activeElement.selectionEnd = start + key.length;
+      activeElement.dispatchEvent(new Event("input", { bubbles: true }));
+      activeElement.focus();
+    }
+    handleCheckSentence();
+    return true;
   }
   const activeElement = document.activeElement as HTMLInputElement;
   if (activeElement && activeElement.tagName === "INPUT") {
@@ -411,7 +515,8 @@ function handleKeyPress(key: string) {
         (el) => el === activeElement
       );
       if (idx !== -1 && idx !== undefined) {
-        modularInputRef.value.handleSpace(activeElement, idx);
+        handleSpace(activeElement, idx);
+        return !isVirtual;
       }
     } else if (key === "Backspace") {
       // Handle backspace specially for ModularInput or normal delete
@@ -419,7 +524,8 @@ function handleKeyPress(key: string) {
         (el) => el === activeElement
       );
       if (idx !== -1 && idx !== undefined) {
-        modularInputRef.value.handleBackspace(activeElement, idx);
+        handleBackspace(activeElement, idx);
+        return !isVirtual;
       } else {
         // Normal backspace for other inputs (e.g., translateInput)
         const start = activeElement.selectionStart || 0;
@@ -443,8 +549,8 @@ function handleKeyPress(key: string) {
       // Other special keys: dispatch keydown event for ModularInput to handle
       const event = new KeyboardEvent("keydown", { key });
       activeElement.dispatchEvent(event);
-    } else {
-      // Regular character: insert directly
+    } else if (isVirtual) {
+      // Regular character from virtual keyboard: insert directly
       const start = activeElement.selectionStart || 0;
       const end = activeElement.selectionEnd || 0;
       const value = activeElement.value;
@@ -454,6 +560,22 @@ function handleKeyPress(key: string) {
       activeElement.dispatchEvent(new Event("input", { bubbles: true }));
       activeElement.focus();
     }
+    // For physical keyboard regular characters, let browser handle
   }
+  return false;
 }
+
+const keydownHandler = (event: KeyboardEvent) => {
+  if (handleKeyPress(event.key, false)) {
+    event.preventDefault();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("keydown", keydownHandler);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("keydown", keydownHandler);
+});
 </script>
