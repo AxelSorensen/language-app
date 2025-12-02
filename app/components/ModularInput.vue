@@ -430,120 +430,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
-const handleKeyPress = (key: string, isVirtual = false) => {
-  // Handle virtual keyboard key presses
-  console.log("Key pressed:", key);
-  if (props.translateMode && key === "Backspace") {
-    const activeElement = document.activeElement as HTMLInputElement;
-    if (activeElement && activeElement !== translateInputRef.value) {
-      return true; // Prevent backspace on main inputs in translate mode
-    }
-  }
-  if (key === "Tab") {
-    handleTab();
-    return true;
-  }
-  if (key === ".") {
-    // Insert the dot manually
-    const activeElement = document.activeElement as HTMLInputElement;
-    if (activeElement && activeElement.tagName === "INPUT") {
-      const start = activeElement.selectionStart || 0;
-      const end = activeElement.selectionEnd || 0;
-      const value = activeElement.value;
-      activeElement.value = value.slice(0, start) + key + value.slice(end);
-      activeElement.selectionStart = activeElement.selectionEnd =
-        start + key.length;
-      activeElement.dispatchEvent(new Event("input", { bubbles: true }));
-      activeElement.focus();
-    }
-    emit("check-sentence");
-    return true;
-  }
-  const targetElement = isVirtual
-    ? inputsRefs.value[currentFocusedIdx.value]
-    : (document.activeElement as HTMLInputElement);
-  if (targetElement && targetElement.tagName === "INPUT") {
-    if (key === " ") {
-      // Handle space specially for ModularInput
-      const idx = inputsRefs.value.findIndex((el) => el === targetElement);
-      if (idx !== -1 && idx !== undefined) {
-        handleSpace(targetElement, idx);
-        return true;
-      }
-    } else if (key === "Backspace") {
-      // Handle backspace specially for ModularInput or normal delete
-      const idx = inputsRefs.value.findIndex((el) => el === targetElement);
-      if (idx !== -1 && idx !== undefined) {
-        handleBackspace(targetElement, idx);
-        return true;
-      } else {
-        // Normal backspace for other inputs (e.g., translateInput)
-        const start = targetElement.selectionStart || 0;
-        const end = targetElement.selectionEnd || 0;
-        if (start !== end) {
-          // Delete selection
-          targetElement.value =
-            targetElement.value.slice(0, start) +
-            targetElement.value.slice(end);
-          targetElement.selectionStart = targetElement.selectionEnd = start;
-        } else if (start > 0) {
-          // Delete previous character
-          targetElement.value =
-            targetElement.value.slice(0, start - 1) +
-            targetElement.value.slice(start);
-          targetElement.selectionStart = targetElement.selectionEnd = start - 1;
-        }
-        targetElement.dispatchEvent(new Event("input", { bubbles: true }));
-        return true; // Prevent default browser behavior
-      }
-    } else if (key.length > 1) {
-      // Other special keys: dispatch keydown event for ModularInput to handle
-      const event = new KeyboardEvent("keydown", { key });
-      targetElement.dispatchEvent(event);
-    } else if (isVirtual) {
-      // Regular character from virtual keyboard: insert directly
-      const start = targetElement.selectionStart || 0;
-      const end = targetElement.selectionEnd || 0;
-      const value = targetElement.value;
-      targetElement.value = value.slice(0, start) + key + value.slice(end);
-      targetElement.selectionStart = targetElement.selectionEnd =
-        start + key.length;
-      targetElement.dispatchEvent(new Event("input", { bubbles: true }));
-      targetElement.focus();
-    }
-    // For physical keyboard regular characters, let browser handle
-  }
-  return false;
-};
-
-const keydownHandler = (event: KeyboardEvent) => {
-  if (event.key === "Tab") {
-    event.preventDefault();
-    console.log("Tab key pressed");
-    handleTab();
-    return;
-  }
-  if (
-    (event.key === " " || event.key === "Backspace") &&
-    !props.translateMode
-  ) {
-    event.preventDefault();
-  }
-};
-
-const handleInputCreated = (idx: number) => {
-  if (words.value[idx].status === "idle") {
-    processWord(words.value[idx].id, words.value.map((w) => w.text).join(" "));
-  }
-};
-
-const handleProcessCurrent = (id: string) => {
-  const idx = words.value.findIndex((w) => w.id === id);
-  if (idx !== -1 && words.value[idx].status === "idle") {
-    processWord(id, words.value.map((w) => w.text).join(" "));
-  }
-};
-
 const handleDeleteWord = (idx: number) => {
   words.value.splice(idx, 1);
   // Focus the previous word at end, or first if none
@@ -655,48 +541,8 @@ const handleMergeWords = (idx: number) => {
   });
 };
 
-const handleCheckSentence = async () => {
-  isCheckingSentenceLocal.value = true;
-  const fullText = words.value.map((w) => w.text).join(" ");
-  if (fullText.trim()) {
-    try {
-      const result = await $fetch("/api/check-sentence", {
-        method: "POST",
-        body: { sentence: fullText },
-      });
-      console.log("Sentence correction:", result);
-      // Clear previous sentence errors
-      words.value.forEach((w) => (w.sentenceError = null));
-      if (result.type === "correction") {
-        const startIdx = fullText.indexOf(result.wrong_text);
-        if (startIdx !== -1) {
-          const endIdx = startIdx + result.wrong_text.length;
-          let currentIdx = 0;
-          for (let i = 0; i < words.value.length; i++) {
-            const wordStart = currentIdx;
-            const wordEnd = currentIdx + words.value[i].text.length;
-            if (wordEnd > startIdx && wordStart < endIdx) {
-              words.value[i].sentenceError = {
-                correction: result.correction,
-                explanation: result.explanation,
-              };
-            }
-            currentIdx += words.value[i].text.length + 1; // +1 for space
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Sentence check failed:", error);
-    }
-  }
-};
-
 async function handleTab() {
   emit("tab", currentFocusedIdx.value);
-}
-
-async function handleTranslate() {
-  emit("translate");
 }
 
 const focusTranslateInput = () => {
@@ -721,7 +567,6 @@ defineExpose({
   focusOnEnd,
   focusOnPosition,
   focusOnEndById,
-  handleKeyPress,
   handleKeyDown,
 });
 </script>
