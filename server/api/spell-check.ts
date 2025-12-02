@@ -19,6 +19,8 @@ export default defineEventHandler(async (event) => {
 
 Check if "${word}" is a valid word in ${targetLanguage}. Do not consider context, conjugation, grammar, or any linguistic analysis - just check if it's a basic dictionary word.
 
+${extraInstruction}
+
 Return:
 - word: the original word
 - type: "valid" | "correction" | "unknown_word"
