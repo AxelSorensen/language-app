@@ -21,6 +21,8 @@ Check if "${word}" is a valid word in ${targetLanguage}. Do not consider context
 
 ${extraInstruction}
 
+If the word written really sounds phonetically like a word in the target language, please correct it to the most likely word.
+
 Return:
 - word: the original word
 - type: "valid" | "correction" | "unknown_word"

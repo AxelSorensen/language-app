@@ -14,6 +14,6 @@ export const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
 };
 
 export const WORD_LANGUAGE_INSTRUCTIONS: Record<string, string> = {
-  zh: `The input is in Pinyin (romanized Chinese). Translate from Pinyin to English, inferring meaning even if tone marks are missing.`,
+  zh: `The input is in Pinyin (romanized Chinese). If you need to make corrections, always provide the correction in Pinyin, not in Chinese characters. Translate from Pinyin to English, inferring meaning even if tone marks are missing.`,
   es: `If it's a verb, include the pronoun in the translation output (e.g., hablo → (I) speak, eres → (You) are).`,
 };
