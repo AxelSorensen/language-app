@@ -31,25 +31,18 @@
         <div class="mx-auto text-2xl">
           <ModularInput
             ref="modularInputRef"
-            :key="wordsKey"
-            :words="words"
-            :translateMode="translateMode"
-            :isTranslating="isTranslating"
-            :wordsToTranslate="wordsToTranslate"
-            :isCheckingSentence="isCheckingSentence"
-            @input-created="handleInputCreated"
-            @process-current="handleProcessCurrent"
-            @delete-word="handleDeleteWord"
-            @apply-correction="handleApplyCorrection"
-            @apply-sentence-correction="handleApplySentenceCorrection"
-            @break-word="handleBreakWord"
-            @merge-words="handleMergeWords"
-            @add-word-after="handleAddWordAfter"
-            @check-sentence="handleCheckSentence"
-            @update:wordsToTranslate="wordsToTranslate = $event"
-            @blur-translate="
-              translateModeComp.state.value.translateMode = false
+            v-model:words="words"
+            :translateMode="translateComp.state.value.translateMode"
+            :isTranslating="translateComp.state.value.isTranslating"
+            :wordsToTranslate="translateComp.state.value.wordsToTranslate"
+            :is-checking-sentence="isCheckingSentenceLocal"
+            @update:wordsToTranslate="
+              translateComp.state.value.wordsToTranslate = $event
             "
+            @process-word="handleProcessWord"
+            @tab="handleTab"
+            @dot="handleCheckSentence"
+            @typing-timeout="handleTypingTimeout"
           />
         </div>
       </div>
@@ -57,8 +50,15 @@
 
     <template #keyboard>
       <CustomKeyboard
-        :is-translating="isTranslating"
-        @on-key-press="(key) => handleKeyPress(key, true)"
+        :is-translating="translateComp.state.value.isTranslating"
+        :translate-mode="translateComp.state.value.translateMode"
+        :words-to-translate="translateComp.state.value.wordsToTranslate"
+        @on-key-press="
+          (key) => {
+            modularInputRef.value?.focusCurrent();
+            modularInputRef.value?.handleKeyPress(key, true);
+          }
+        "
       />
     </template>
   </BaseLayout>
@@ -70,8 +70,8 @@ import ModularInput from "~/components/ModularInput.vue";
 import LanguageSelector from "~/components/LanguageSelector.vue";
 import CustomKeyboard from "~/components/CustomKeyboard.vue";
 import BaseLayout from "~/layouts/BaseLayout.vue";
-import { useTranslateMode } from "~/composables/useTranslateMode";
 import { useWords } from "~/composables/useWords";
+import { useTranslateMode } from "~/composables/useTranslateMode";
 
 definePageMeta({
   layout: "keyboard",
@@ -82,9 +82,12 @@ const languages = ref({
   target: "es",
 });
 
-const { words, processWord } = useWords();
+function handleBlurTranslate() {
+  translateComp.state.value.translateMode = false;
+}
 
-const wordsKey = ref(0);
+const { words, processWord } = useWords();
+const translateComp = useTranslateMode();
 
 const hasText = computed(() => words.value.some((w) => w.text.trim() !== ""));
 
@@ -99,10 +102,6 @@ const clearWords = () => {
       sentenceError: null,
     },
   ];
-  wordsKey.value++;
-  nextTick(() => {
-    modularInputRef.value?.focusOnPosition(0, 0);
-  });
 };
 
 const focusInput = () => {
@@ -122,233 +121,50 @@ if (words.value.length === 0) {
 
 const modularInputRef = ref();
 
-const isCheckingSentence = ref(false);
-
 const previousSelection = ref<{
   idx: number;
   start: number;
   end: number;
 } | null>(null);
 
-const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
-  if (translateMode.value) return; // Do not create new words in translate mode
-
-  const word = words.value[idx];
-  if (word.text.trim() === "") return; // Do not handle space if already in an empty word
-
-  const cursorPos = inputEl.selectionStart || 0;
-  const wordLength = word.text.length;
-
-  if (cursorPos === 0) {
-    // At the beginning, just add new word before
-    words.value.splice(idx, 0, {
-      text: "",
-      id: crypto.randomUUID(),
-      correction: null,
-      translation: null,
-      status: "idle",
-      sentenceError: null,
-    });
-    nextTick(() => {
-      modularInputRef.value.focusOnPosition(idx, 0);
-    });
-  } else if (cursorPos < wordLength) {
-    // In the middle, break the word
-    handleBreakWord({ idx, cursorPos });
-  } else {
-    // At the end, process current word and add new
-    if (word.text.trim() !== "" && word.status === "idle") {
-      processWord(word.id, words.value.map((w) => w.text).join(" "));
-    }
-    words.value.splice(idx + 1, 0, {
-      text: "",
-      id: crypto.randomUUID(),
-      correction: null,
-      translation: null,
-      status: "idle",
-      sentenceError: null,
-    });
-    nextTick(() => {
-      modularInputRef.value.focusOnPosition(idx + 1, 0);
-    });
-  }
-};
-
-const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
-  const start = inputEl.selectionStart || 0;
-  const end = inputEl.selectionEnd || 0;
-  if (start === 0 && end === 0) {
-    // At start of word
-    if (idx > 0) {
-      // Merge with previous word
-      handleMergeWords(idx);
-    } else if (words.value.length > 1 && words.value[idx].text === "") {
-      // Delete empty first word if more than one
-      words.value.splice(idx, 1);
-      nextTick(() => {
-        modularInputRef.value.focusOnEnd(0);
-      });
-    }
-  } else {
-    // Delete selection or character before cursor
-    const value = inputEl.value;
-    if (start !== end) {
-      inputEl.value = value.slice(0, start) + value.slice(end);
-      inputEl.selectionStart = inputEl.selectionEnd = start;
-    } else if (start > 0) {
-      inputEl.value = value.slice(0, start - 1) + value.slice(start);
-      inputEl.selectionStart = inputEl.selectionEnd = start - 1;
-    }
-    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-  }
-};
-
 function handleLanguageChange(newLanguages) {
   languages.value = newLanguages;
 }
 
-const handleInputCreated = (idx: number) => {
-  if (words.value[idx].status === "idle") {
-    processWord(words.value[idx].id, words.value.map((w) => w.text).join(" "));
-  }
-};
+const isCheckingSentenceLocal = ref(false);
 
-const handleProcessCurrent = (id: string) => {
-  const idx = words.value.findIndex((w) => w.id === id);
-  if (idx !== -1 && words.value[idx].status === "idle") {
-    processWord(id, words.value.map((w) => w.text).join(" "));
-  }
-};
-
-const handleDeleteWord = (idx: number) => {
-  words.value.splice(idx, 1);
-  // Focus the previous word at end, or first if none
-  nextTick(() => {
-    const focusIdx = idx > 0 ? idx - 1 : 0;
-    modularInputRef.value.focusOnEnd(focusIdx);
-  });
-};
-
-const handleApplyCorrection = (idx: number) => {
-  if (words.value[idx].correction) {
-    words.value[idx].text = words.value[idx].correction;
-    words.value[idx].correction = null;
-    words.value[idx].translation = null;
-    words.value[idx].status = "idle";
-    processWord(words.value[idx].id, words.value.map((w) => w.text).join(" "));
-    // Move cursor to the end of the corrected word
-    nextTick(() => {
-      modularInputRef.value.focusOnEnd(idx);
-    });
-  }
-};
-
-const handleApplySentenceCorrection = () => {
-  const wrongWords = words.value.filter((w) => w.sentenceError);
-  if (wrongWords.length > 0) {
-    const correction = wrongWords[0].sentenceError!.correction;
-    const correctionWords = correction
-      .split(" ")
-      .filter((word) => word.trim() !== "");
-    const startIdx = words.value.indexOf(wrongWords[0]);
-    words.value.splice(
-      startIdx,
-      wrongWords.length,
-      ...correctionWords.map((word) => ({
-        text: word,
-        id: crypto.randomUUID(),
-        correction: null,
-        translation: null,
-        status: "idle",
-        sentenceError: null,
-      }))
-    );
-    // Process all new words
-    const fullText = words.value.map((w) => w.text).join(" ");
-    for (let i = startIdx; i < startIdx + correctionWords.length; i++) {
-      processWord(words.value[i].id, fullText);
+function handleTab(prevSel) {
+  if (!translateComp.state.value.translateMode) {
+    // Enter translate mode and save selection
+    previousSelection.value = prevSel;
+    handleToggleTranslateMode();
+  } else {
+    // If there are words to translate, process them
+    if (translateComp.state.value.wordsToTranslate.trim()) {
+      handleTranslate();
     }
-    // Focus on the last affected word
-    nextTick(() => {
-      modularInputRef.value.focusOnEnd(startIdx + correctionWords.length - 1);
-    });
+    // Always exit translate mode and select the last word of the current index
+    translateComp.state.value.translateMode = false;
+    if (previousSelection.value) {
+      nextTick(() => {
+        modularInputRef.value.focusOnEnd(previousSelection.value.idx);
+      });
+      previousSelection.value = null;
+    }
   }
-};
+}
 
-const handleBreakWord = ({
-  idx,
-  cursorPos,
-}: {
-  idx: number;
-  cursorPos: number;
-}) => {
-  const word = words.value[idx];
-  const before = word.text.slice(0, cursorPos);
-  const after = word.text.slice(cursorPos);
-  word.text = before;
-  word.status = "idle";
-  word.correction = null;
-  word.translation = null;
-  word.sentenceError = null;
-  words.value.splice(idx + 1, 0, {
-    text: after,
-    id: crypto.randomUUID(),
-    correction: null,
-    translation: null,
-    status: "idle",
-    sentenceError: null,
-  });
-  // Process both words from the split
-  processWord(word.id, words.value.map((w) => w.text).join(" "));
-  processWord(
-    words.value[idx + 1].id,
-    words.value.map((w) => w.text).join(" ")
-  );
-  // Focus the new input at beginning
-  nextTick(() => {
-    modularInputRef.value.focusOnPosition(idx + 1, 0);
-  });
-};
+function handleProcessWord(data: { id: string; fullText: string }) {
+  processWord(data.id, data.fullText);
+}
 
-const handleMergeWords = (idx: number) => {
-  const currentText = words.value[idx].text;
-  words.value[idx - 1].text += currentText;
-  words.value.splice(idx, 1);
-  words.value[idx - 1].status = "idle";
-  words.value[idx - 1].correction = null;
-  words.value[idx - 1].translation = null;
-  words.value[idx - 1].sentenceError = null;
-  // Process the merged word
-  processWord(
-    words.value[idx - 1].id,
-    words.value.map((w) => w.text).join(" ")
-  );
-  // Focus the merged input at the merge point
-  nextTick(() => {
-    const mergedIdx = idx - 1;
-    const mergedWord = words.value[mergedIdx];
-    const mergePoint = mergedWord.text.length - currentText.length;
-    modularInputRef.value.focusOnPosition(mergedIdx, mergePoint, mergePoint);
-  });
-};
+function handleTypingTimeout(data: { id: string; fullText: string }) {
+  // Example: process the word after typing inactivity
+  processWord(data.id, data.fullText);
+}
 
-const handleAddWordAfter = (idx: number) => {
-  words.value.splice(idx + 1, 0, {
-    text: "",
-    id: crypto.randomUUID(),
-    correction: null,
-    translation: null,
-    status: "idle",
-    sentenceError: null,
-  });
-  // Focus the new input at beginning
-  nextTick(() => {
-    modularInputRef.value.focusOnPosition(idx + 1, 0);
-  });
-};
-
-const handleCheckSentence = async () => {
-  isCheckingSentence.value = true;
+async function handleCheckSentence() {
+  isCheckingSentenceLocal.value = true;
   const fullText = words.value.map((w) => w.text).join(" ");
   if (fullText.trim()) {
     try {
@@ -381,78 +197,45 @@ const handleCheckSentence = async () => {
       console.error("Sentence check failed:", error);
     }
   }
-  isCheckingSentence.value = false;
-};
+  isCheckingSentenceLocal.value = false;
+}
 
-const translateModeComp = useTranslateMode();
-
-const translateMode = computed(
-  () => translateModeComp.state.value.translateMode
-);
-const isTranslating = computed(
-  () => translateModeComp.state.value.isTranslating
-);
-const wordsToTranslate = computed({
-  get: () => translateModeComp.state.value.wordsToTranslate,
-  set: (value) => (translateModeComp.state.value.wordsToTranslate = value),
-});
-
-async function handleTab() {
-  if (!translateModeComp.state.value.translateMode) {
-    // Save current selection before entering translate mode
-    const activeElement = document.activeElement as HTMLInputElement;
-    if (activeElement && activeElement.tagName === "INPUT") {
-      const idx = modularInputRef.value?.inputsRefs.findIndex(
-        (el) => el === activeElement
-      );
-      if (idx !== -1 && idx !== undefined) {
-        previousSelection.value = {
-          idx,
-          start: activeElement.selectionStart || 0,
-          end: activeElement.selectionEnd || 0,
-        };
-      }
-    }
-  }
-  translateModeComp.state.value.translateMode =
-    !translateModeComp.state.value.translateMode;
-  if (translateModeComp.state.value.translateMode) {
+async function handleToggleTranslateMode() {
+  translateComp.state.value.translateMode =
+    !translateComp.state.value.translateMode;
+  if (translateComp.state.value.translateMode) {
     await nextTick();
-    if (modularInputRef.value?.translateInputRef) {
-      modularInputRef.value.translateInputRef.focus();
-      modularInputRef.value.translateInputRef.setSelectionRange(
-        0,
-        modularInputRef.value.translateInputRef.value.length
-      );
-    }
+    modularInputRef.value.focusTranslateInput();
+    return;
+  }
+}
+
+async function handleTranslate() {
+  if (!translateComp.state.value.wordsToTranslate) {
     return;
   }
 
-  // Handle translation response and add translated words
-  if (!translateModeComp.state.value.wordsToTranslate) {
-    // Restore previous selection
-    if (previousSelection.value) {
-      await nextTick();
-      modularInputRef.value.focusOnPosition(
-        previousSelection.value.idx,
-        previousSelection.value.start,
-        previousSelection.value.end
-      );
-      previousSelection.value = null;
-    }
-    return;
-  }
+  translateComp.state.value.isTranslating = true;
 
   // Filter out empty words from the text to translate
-  const filteredText = translateModeComp.state.value.wordsToTranslate
+  const filteredText = translateComp.state.value.wordsToTranslate
     .split(" ")
     .filter((word) => word.trim() !== "")
     .join(" ");
 
-  const response = await translateModeComp.actions.translate(filteredText);
+  const response = await $fetch("/api/translate", {
+    method: "POST",
+    body: {
+      text: filteredText,
+      source: languages.value.source,
+      target: languages.value.target,
+    },
+  });
   console.log("Translation response:", response);
 
-  const translatedText = response.translation.trim();
+  translateComp.state.value.isTranslating = false;
+
+  const translatedText = response.translation;
   const newWords = translatedText
     .split(" ")
     .filter((word) => word.trim() !== "");
@@ -477,119 +260,41 @@ async function handleTab() {
         translation: null,
       }))
     );
+
+    let emptyBefore = words.value
+      .slice(0, insertIdx)
+      .filter((w) => w.text.trim() === "").length;
+    words.value = words.value.filter((w) => w.text.trim() !== "");
+    let newInsertIdx = insertIdx - emptyBefore;
     // Focus on the last added word at the end
     await nextTick();
-    modularInputRef.value.focusOnEnd(insertIdx + newWords.length - 1);
+    modularInputRef.value.focusOnEnd(newInsertIdx + newWords.length - 1);
     // Process the new translated words
     const fullText = words.value.map((w) => w.text).join(" ");
-    for (let i = insertIdx; i < insertIdx + newWords.length; i++) {
+    for (let i = newInsertIdx; i < newInsertIdx + newWords.length; i++) {
       processWord(words.value[i].id, fullText);
     }
+
+    // Remove empty words
+
+    if (words.value.length === 0) {
+      words.value.push({
+        text: "",
+        id: crypto.randomUUID(),
+        correction: null,
+        translation: null,
+        status: "idle",
+        sentenceError: null,
+      });
+    }
   }
+
+  // After translating, exit translate mode
+  translateComp.state.value.translateMode = false;
+
+  // Clear the translate input
+  translateComp.state.value.wordsToTranslate = "";
+
+  // Do not restore previous selection after translation, stay at the last added word
 }
-
-function handleKeyPress(key: string, isVirtual = false) {
-  // Handle virtual keyboard key presses
-  console.log("Key pressed:", key);
-  if (translateMode.value && key === "Backspace") {
-    const activeElement = document.activeElement as HTMLInputElement;
-    if (
-      activeElement &&
-      activeElement !== modularInputRef.value?.translateInputRef
-    ) {
-      return true; // Prevent backspace on main inputs in translate mode
-    }
-  }
-  if (key === "Tab") {
-    handleTab();
-    return true;
-  }
-  if (key === ".") {
-    // Insert the dot manually
-    const activeElement = document.activeElement as HTMLInputElement;
-    if (activeElement && activeElement.tagName === "INPUT") {
-      const start = activeElement.selectionStart || 0;
-      const end = activeElement.selectionEnd || 0;
-      const value = activeElement.value;
-      activeElement.value = value.slice(0, start) + key + value.slice(end);
-      activeElement.selectionStart = activeElement.selectionEnd =
-        start + key.length;
-      activeElement.dispatchEvent(new Event("input", { bubbles: true }));
-      activeElement.focus();
-    }
-    handleCheckSentence();
-    return true;
-  }
-  const activeElement = document.activeElement as HTMLInputElement;
-  if (activeElement && activeElement.tagName === "INPUT") {
-    if (key === " ") {
-      // Handle space specially for ModularInput
-      const idx = modularInputRef.value?.inputsRefs.findIndex(
-        (el) => el === activeElement
-      );
-      if (idx !== -1 && idx !== undefined) {
-        handleSpace(activeElement, idx);
-        return !isVirtual;
-      }
-    } else if (key === "Backspace") {
-      // Handle backspace specially for ModularInput or normal delete
-      const idx = modularInputRef.value?.inputsRefs.findIndex(
-        (el) => el === activeElement
-      );
-      if (idx !== -1 && idx !== undefined) {
-        handleBackspace(activeElement, idx);
-        return !isVirtual;
-      } else {
-        // Normal backspace for other inputs (e.g., translateInput)
-        const start = activeElement.selectionStart || 0;
-        const end = activeElement.selectionEnd || 0;
-        if (start !== end) {
-          // Delete selection
-          activeElement.value =
-            activeElement.value.slice(0, start) +
-            activeElement.value.slice(end);
-          activeElement.selectionStart = activeElement.selectionEnd = start;
-        } else if (start > 0) {
-          // Delete previous character
-          activeElement.value =
-            activeElement.value.slice(0, start - 1) +
-            activeElement.value.slice(start);
-          activeElement.selectionStart = activeElement.selectionEnd = start - 1;
-        }
-        activeElement.dispatchEvent(new Event("input", { bubbles: true }));
-        return true; // Prevent default browser behavior
-      }
-    } else if (key.length > 1) {
-      // Other special keys: dispatch keydown event for ModularInput to handle
-      const event = new KeyboardEvent("keydown", { key });
-      activeElement.dispatchEvent(event);
-    } else if (isVirtual) {
-      // Regular character from virtual keyboard: insert directly
-      const start = activeElement.selectionStart || 0;
-      const end = activeElement.selectionEnd || 0;
-      const value = activeElement.value;
-      activeElement.value = value.slice(0, start) + key + value.slice(end);
-      activeElement.selectionStart = activeElement.selectionEnd =
-        start + key.length;
-      activeElement.dispatchEvent(new Event("input", { bubbles: true }));
-      activeElement.focus();
-    }
-    // For physical keyboard regular characters, let browser handle
-  }
-  return false;
-}
-
-const keydownHandler = (event: KeyboardEvent) => {
-  if (handleKeyPress(event.key, false)) {
-    event.preventDefault();
-  }
-};
-
-onMounted(() => {
-  document.addEventListener("keydown", keydownHandler);
-});
-
-onUnmounted(() => {
-  document.removeEventListener("keydown", keydownHandler);
-});
 </script>

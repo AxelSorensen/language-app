@@ -1,7 +1,6 @@
 <template>
   <div
     class="select-none border-t border-gray-200 p-2 sm:p-4 rounded-t-xl shadow-lg w-full max-w-none"
-    @mousedown.prevent
   >
     <div class="flex flex-row w-full gap-1 mb-1 sm:mb-2 relative">
       <KeyboardKey
@@ -94,7 +93,7 @@
         :pressed="pressedKeys.has('Tab')"
         :buttonClass="[
           'keyboard-key w-full font-medium py-3 sm:py-4 rounded-md transition-all duration-150 border shadow-sm flex items-center justify-center',
-          translateModeState.translateMode
+          props.translateMode
             ? 'bg-purple-300 hover:bg-purple-400 text-purple-900 border-purple-400'
             : 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
           pressedKeys.has('Tab') ? 'bg-purple-400 pressed' : '',
@@ -125,10 +124,7 @@
           </svg>
         </template>
         <template
-          v-else-if="
-            translateModeState.translateMode &&
-            translateModeState.wordsToTranslate.length > 0
-          "
+          v-else-if="props.translateMode && props.wordsToTranslate.length > 0"
         >
           <svg
             class="h-6 w-6 shrink-0"
@@ -229,6 +225,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  translateMode: {
+    type: Boolean,
+    default: false,
+  },
+  wordsToTranslate: {
+    type: String,
+    default: "",
+  },
 });
 const pressedKeys = ref(new Set());
 const deleteInterval = ref(null);
@@ -237,9 +241,6 @@ const deleteSpeedUpTimeout = ref(null);
 const hasAddedTextInTranslateMode = ref(false);
 const isPermanentCaps = ref(false);
 const shiftTimeout = ref(null);
-const { state: translateModeState } = useTranslateMode();
-// Keyboard state
-
 const { state: keyboardState, actions: keyboardActions } = useKeyboard();
 
 const emit = defineEmits(["on-key-press"]);
@@ -262,9 +263,6 @@ function handleShiftPress() {
   if (isPermanentCaps.value) {
     // If permanent caps is on, short press turns it off
     isPermanentCaps.value = false;
-    keyboardState.value.isCapsLock = false;
-  } else if (keyboardState.value.isCapsLock) {
-    // If sticky caps is on, short press turns it off
     keyboardState.value.isCapsLock = false;
   } else {
     // Short press: sticky shift
