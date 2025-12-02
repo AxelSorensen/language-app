@@ -53,12 +53,7 @@
         :is-translating="translateComp.state.value.isTranslating"
         :translate-mode="translateComp.state.value.translateMode"
         :words-to-translate="translateComp.state.value.wordsToTranslate"
-        @on-key-press="
-          (key) => {
-            modularInputRef.value?.focusCurrent();
-            modularInputRef.value?.handleKeyPress(key, true);
-          }
-        "
+        @on-key-press="handleVirtualKeyPress"
       />
     </template>
   </BaseLayout>
@@ -82,8 +77,8 @@ const languages = ref({
   target: "es",
 });
 
-function handleBlurTranslate() {
-  translateComp.state.value.translateMode = false;
+function handleVirtualKeyPress(key: string) {
+  modularInputRef.value?.handleKeyDown(new KeyboardEvent("keydown", { key }));
 }
 
 const { words, processWord } = useWords();
@@ -127,27 +122,29 @@ const previousSelection = ref<{
   end: number;
 } | null>(null);
 
+const translateStartedOnEmpty = ref(false);
+
 function handleLanguageChange(newLanguages) {
   languages.value = newLanguages;
 }
 
 const isCheckingSentenceLocal = ref(false);
 
-function handleTab(prevSel) {
+function handleTab(idx: number) {
   if (!translateComp.state.value.translateMode) {
     // Enter translate mode and save selection
-    previousSelection.value = prevSel;
+    translateStartedOnEmpty.value = words.value[idx]?.text.trim() === "";
     handleToggleTranslateMode();
   } else {
     // If there are words to translate, process them
     if (translateComp.state.value.wordsToTranslate.trim()) {
-      handleTranslate();
+      handleTranslate(idx);
     }
     // Always exit translate mode and select the last word of the current index
     translateComp.state.value.translateMode = false;
     if (previousSelection.value) {
       nextTick(() => {
-        modularInputRef.value.focusOnEnd(previousSelection.value.idx);
+        modularInputRef.value.focusOnEnd(idx);
       });
       previousSelection.value = null;
     }
@@ -204,13 +201,14 @@ async function handleToggleTranslateMode() {
   translateComp.state.value.translateMode =
     !translateComp.state.value.translateMode;
   if (translateComp.state.value.translateMode) {
+    translateComp.state.value.wordsToTranslate = ""; // Clear the input when entering translate mode
     await nextTick();
     modularInputRef.value.focusTranslateInput();
     return;
   }
 }
 
-async function handleTranslate() {
+async function handleTranslate(idx: number) {
   if (!translateComp.state.value.wordsToTranslate) {
     return;
   }
@@ -240,61 +238,55 @@ async function handleTranslate() {
     .split(" ")
     .filter((word) => word.trim() !== "");
   if (newWords.length > 0) {
-    let insertIdx = words.value.length;
-    if (previousSelection.value) {
-      insertIdx = previousSelection.value.idx + 1;
-      // If the current word is empty, delete it
-      if (words.value[previousSelection.value.idx].text.trim() === "") {
-        words.value.splice(previousSelection.value.idx, 1);
-        insertIdx = previousSelection.value.idx;
-      }
+    let insertIdx = translateStartedOnEmpty.value ? idx : idx + 1;
+    if (translateStartedOnEmpty.value) {
+      // Replace the empty word
+      words.value.splice(
+        insertIdx,
+        1,
+        ...newWords.map((word) => ({
+          id: crypto.randomUUID(),
+          text: word,
+          status: "idle",
+          correction: null,
+          translation: null,
+        }))
+      );
+    } else {
+      // Insert after the word with text
+      words.value.splice(
+        insertIdx,
+        0,
+        ...newWords.map((word) => ({
+          id: crypto.randomUUID(),
+          text: word,
+          status: "idle",
+          correction: null,
+          translation: null,
+        }))
+      );
     }
-    words.value.splice(
-      insertIdx,
-      0,
-      ...newWords.map((word) => ({
-        id: crypto.randomUUID(),
-        text: word,
-        status: "idle",
-        correction: null,
-        translation: null,
-      }))
-    );
 
-    let emptyBefore = words.value
-      .slice(0, insertIdx)
-      .filter((w) => w.text.trim() === "").length;
-    words.value = words.value.filter((w) => w.text.trim() !== "");
-    let newInsertIdx = insertIdx - emptyBefore;
     // Focus on the last added word at the end
+    const lastWordId = words.value[insertIdx + newWords.length - 1].id;
     await nextTick();
-    modularInputRef.value.focusOnEnd(newInsertIdx + newWords.length - 1);
+    modularInputRef.value.focusOnEndById(lastWordId);
     // Process the new translated words
     const fullText = words.value.map((w) => w.text).join(" ");
-    for (let i = newInsertIdx; i < newInsertIdx + newWords.length; i++) {
+    for (let i = insertIdx; i < insertIdx + newWords.length; i++) {
       processWord(words.value[i].id, fullText);
     }
-
-    // Remove empty words
-
-    if (words.value.length === 0) {
-      words.value.push({
-        text: "",
-        id: crypto.randomUUID(),
-        correction: null,
-        translation: null,
-        status: "idle",
-        sentenceError: null,
-      });
-    }
   }
-
-  // After translating, exit translate mode
-  translateComp.state.value.translateMode = false;
-
-  // Clear the translate input
-  translateComp.state.value.wordsToTranslate = "";
-
-  // Do not restore previous selection after translation, stay at the last added word
 }
+
+// After translating, exit translate mode
+translateComp.state.value.translateMode = false;
+
+// Clear the translate input
+translateComp.state.value.wordsToTranslate = "";
+
+// Reset the flag
+translateStartedOnEmpty.value = false;
+
+// Do not restore previous selection after translation, stay at the last added word
 </script>

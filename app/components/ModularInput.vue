@@ -2,8 +2,8 @@
   <div
     class="flex flex-wrap max-w-[800px]"
     :class="{ 'animate-pulse': props.isCheckingSentence }"
+    @keydown.stop="handleKeyDown"
   >
-    {{ words }}
     <div
       v-for="(word, idx) in words || []"
       :key="word.id"
@@ -28,6 +28,7 @@
             ? 'underline decoration-dashed decoration-gray-400 underline-offset-2'
             : '',
         ]"
+        :disabled="props.translateMode"
         @input="saveSelection(idx)"
         @focus="currentFocusedIdx = idx"
       />
@@ -143,10 +144,21 @@ const lastSelection = ref<{ idx: number; start: number; end: number } | null>(
 );
 
 watch(
-  () => props.translateMode,
-  (newMode, oldMode) => {
-    if (oldMode && !newMode && lastSelection.value) {
-      // Translate mode turned off, restore focus
+  [() => props.translateMode, () => props.isTranslating],
+  (
+    [newTranslateMode, newIsTranslating],
+    [oldTranslateMode, oldIsTranslating]
+  ) => {
+    if (
+      oldIsTranslating &&
+      !newIsTranslating &&
+      !newTranslateMode &&
+      lastSelection.value
+    ) {
+      // Translating done and translate mode off, restore focus
+    } else if (!oldTranslateMode && newTranslateMode) {
+      // Tran
+      // slate mode turned on, save current selection
       nextTick(() => {
         focusOnPosition(
           lastSelection.value!.idx,
@@ -154,8 +166,6 @@ watch(
           lastSelection.value!.end
         );
       });
-    } else if (!oldMode && newMode) {
-      // Translate mode turned on, save current selection
       const activeElement = document.activeElement as HTMLInputElement;
       if (activeElement && activeElement.tagName === "INPUT") {
         const idx = inputsRefs.value.findIndex((el) => el === activeElement);
@@ -182,7 +192,14 @@ const applyCorrection = (idx: number) => {
 const saveSelection = (idx: number) => {
   // Set status to idle on input
   words.value[idx].status = "idle";
-  // Manage typing timeout - removed processing here, now done on space/dot
+  // Start typing timeout for processing
+  if (typingTimeout.value) clearTimeout(typingTimeout.value);
+  typingTimeout.value = setTimeout(() => {
+    emit("typing-timeout", {
+      id: words.value[idx].id,
+      fullText: words.value.map((w) => w.text).join(" "),
+    });
+  }, 500); // Process after 1 second of inactivity
 };
 
 const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
@@ -306,18 +323,75 @@ const focusCurrent = () => {
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
-  const inputEl = event.target as HTMLInputElement;
+  event.stopPropagation();
+  // Determine the target input element
+  let inputEl: HTMLInputElement | null = event.target as HTMLInputElement;
+  const isVirtual = !inputEl || inputEl.tagName !== "INPUT";
+
+  if (isVirtual) {
+    // For virtual events, determine target based on mode
+    if (props.translateMode) {
+      inputEl = translateInputRef.value;
+    } else {
+      inputEl = inputsRefs.value[currentFocusedIdx.value] || null;
+      if (!inputEl && inputsRefs.value.length > 0) {
+        currentFocusedIdx.value = 0;
+        inputEl = inputsRefs.value[0];
+        inputEl?.focus();
+      }
+    }
+  }
+
+  if (!inputEl) return; // No valid target
+
   const cursorPos = inputEl.selectionStart || 0;
-  const wordLength = words.value[currentFocusedIdx.value].text.length;
+  const wordLength =
+    isVirtual || props.translateMode
+      ? 0
+      : words.value[currentFocusedIdx.value]?.text.length || 0;
+
+  // Skip special handling in translate mode for virtual events
+  if (props.translateMode && isVirtual) {
+    // For virtual in translate mode, handle keys normally
+    if (event.key === "Backspace") {
+      const start = inputEl.selectionStart || 0;
+      const end = inputEl.selectionEnd || 0;
+      if (start !== end) {
+        // Delete selection
+        inputEl.value =
+          inputEl.value.slice(0, start) + inputEl.value.slice(end);
+        inputEl.selectionStart = inputEl.selectionEnd = start;
+      } else if (start > 0) {
+        // Delete previous character
+        inputEl.value =
+          inputEl.value.slice(0, start - 1) + inputEl.value.slice(start);
+        inputEl.selectionStart = inputEl.selectionEnd = start - 1;
+      }
+    } else if (event.key === "Tab") {
+      // Call handleTab for tab in translate mode
+      handleTab();
+    } else {
+      // Insert the key (including space)
+      const start = inputEl.selectionStart || 0;
+      const end = inputEl.selectionEnd || 0;
+      const value = inputEl.value;
+      inputEl.value = value.slice(0, start) + event.key + value.slice(end);
+      inputEl.selectionStart = inputEl.selectionEnd = start + event.key.length;
+    }
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.focus();
+    return;
+  }
+
   if (event.key === "Tab") {
     event.preventDefault();
     handleTab();
-  } else if (event.key === "ArrowLeft") {
+  } else if (!props.translateMode && event.key === "ArrowLeft") {
     if (cursorPos === 0 && currentFocusedIdx.value > 0) {
       event.preventDefault();
       focusOnEnd(currentFocusedIdx.value - 1);
     }
-  } else if (event.key === "ArrowRight") {
+  } else if (!props.translateMode && event.key === "ArrowRight") {
     if (
       cursorPos === wordLength &&
       currentFocusedIdx.value < words.value.length - 1
@@ -337,6 +411,21 @@ const handleKeyDown = (event: KeyboardEvent) => {
     }
   } else if (event.key === ".") {
     emit("dot");
+  }
+
+  // For virtual events, insert regular characters manually
+  if (
+    isVirtual &&
+    event.key.length === 1 &&
+    ![" ", "Backspace", "Tab"].includes(event.key)
+  ) {
+    const start = inputEl.selectionStart || 0;
+    const end = inputEl.selectionEnd || 0;
+    const value = inputEl.value;
+    inputEl.value = value.slice(0, start) + event.key + value.slice(end);
+    inputEl.selectionStart = inputEl.selectionEnd = start + event.key.length;
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.focus();
   }
 };
 
@@ -440,14 +529,6 @@ const keydownHandler = (event: KeyboardEvent) => {
     event.preventDefault();
   }
 };
-
-onMounted(() => {
-  document.addEventListener("keydown", handleKeyDown);
-});
-
-onUnmounted(() => {
-  document.removeEventListener("keydown", handleKeyDown);
-});
 
 const handleInputCreated = (idx: number) => {
   if (words.value[idx].status === "idle") {
@@ -610,23 +691,7 @@ const handleCheckSentence = async () => {
 };
 
 async function handleTab() {
-  let prevSel: { idx: number; start: number; end: number } | null = null;
-  if (!props.translateMode) {
-    // Save current selection before entering translate mode
-    const activeElement = document.activeElement as HTMLInputElement;
-    if (activeElement && activeElement.tagName === "INPUT") {
-      const idx = inputsRefs.value.findIndex((el) => el === activeElement);
-      if (idx !== -1 && idx !== undefined) {
-        prevSel = {
-          idx,
-          start: activeElement.selectionStart || 0,
-          end: activeElement.selectionEnd || 0,
-        };
-        lastSelection.value = prevSel; // Save for later restoration
-      }
-    }
-  }
-  emit("tab", prevSel);
+  emit("tab", currentFocusedIdx.value);
 }
 
 async function handleTranslate() {
@@ -643,5 +708,19 @@ const focusTranslateInput = () => {
   }
 };
 
-defineExpose({ focusTranslateInput, focusOnEnd, focusOnPosition });
+const focusOnEndById = (id: string) => {
+  const idx = words.value.findIndex((w) => w.id === id);
+  if (idx !== -1) {
+    focusOnEnd(idx);
+  }
+};
+
+defineExpose({
+  focusTranslateInput,
+  focusOnEnd,
+  focusOnPosition,
+  focusOnEndById,
+  handleKeyPress,
+  handleKeyDown,
+});
 </script>

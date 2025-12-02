@@ -523,11 +523,11 @@ const keydownHandler = (event: KeyboardEvent) => {
   }
 };
 
-onMounted(() => {
-  document.addEventListener("keydown", keydownHandler);
-});
+// onMounted(() => {
+//   document.addEventListener("keydown", keydownHandler);
+// });
 
-onUnmounted(() => {
-  document.removeEventListener("keydown", keydownHandler);
-});
+// onUnmounted(() => {
+//   document.removeEventListener("keydown", keydownHandler);
+// });
 </script>
