@@ -38,6 +38,7 @@
             idx === currentFocusedIdx) ||
           words?.length === 0
         "
+        inputmode="none"
         :ref="(el) => (translateInputRef = el)"
         autofocus
         class="outline-none border-none field-sizing-content text-2xl font-sans text-purple-500 mr-1"
