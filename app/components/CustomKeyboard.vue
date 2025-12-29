@@ -9,7 +9,7 @@
         :keyValue="keyboardState.isCapsLock ? key : key.toLowerCase()"
         :pressed="pressedKeys.has(key)"
         :buttonClass="[
-          'keyboard-key flex-1 min-w-0 bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-colors duration-75 border border-gray-300 shadow-sm',
+          'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-colors duration-75 border border-gray-300 shadow-sm',
           pressedKeys.has(key) ? 'bg-gray-200 pressed' : '',
         ]"
         @press="handleKeyDown"
@@ -27,7 +27,7 @@
         :keyValue="keyboardState.isCapsLock ? key : key.toLowerCase()"
         :pressed="pressedKeys.has(key)"
         :buttonClass="[
-          'keyboard-key flex-1 min-w-0 bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has(key) ? 'bg-gray-200 pressed' : '',
         ]"
         @press="handleKeyDown"
@@ -47,14 +47,26 @@
         :buttonClass="[
           'keyboard-key flex-[1.5] min-w-0 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border shadow-sm',
           keyboardState.isCapsLock
-            ? 'bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 border-gray-400'
-            : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 border-gray-300',
+            ? 'bg-gray-800 active:bg-black text-white border-gray-600'
+            : 'bg-gray-100 active:bg-gray-300 text-gray-700 border-gray-300',
           pressedKeys.has('Shift') ? 'bg-gray-400 pressed' : '',
         ]"
         @press="handleShiftPress"
         @release="handleShiftRelease"
       >
-        {{ isPermanentCaps ? "⇪" : "⇧" }}
+        <div class="flex items-center justify-center">
+          <span
+            v-if="isPermanentCaps"
+            class="text-lg transform scale-x-125 text-white"
+            >⇪</span
+          >
+          <span
+            v-else
+            :class="keyboardState.isCapsLock ? 'text-white' : ''"
+            class="text-lg"
+            >⇧</span
+          >
+        </div>
       </KeyboardKey>
       <KeyboardKey
         v-for="key in ['Z', 'X', 'C', 'V', 'B', 'N', 'M']"
@@ -62,7 +74,7 @@
         :keyValue="keyboardState.isCapsLock ? key : key.toLowerCase()"
         :pressed="pressedKeys.has(key)"
         :buttonClass="[
-          'keyboard-key flex-1 min-w-0 bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has(key) ? 'bg-gray-200 pressed' : '',
         ]"
         @press="handleKeyDown"
@@ -75,7 +87,7 @@
         keyValue="Backspace"
         :pressed="pressedKeys.has('Backspace')"
         :buttonClass="[
-          'keyboard-key flex-[1.5] min-w-0 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key flex-[1.5] min-w-0 bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has('Backspace') ? 'bg-gray-300 pressed' : '',
         ]"
         @press="handleKeyDown"
@@ -94,8 +106,8 @@
         :buttonClass="[
           'keyboard-key w-full font-medium py-3 sm:py-4 rounded-md transition-all duration-150 border shadow-sm flex items-center justify-center',
           props.translateMode
-            ? 'bg-purple-300 hover:bg-purple-400 text-purple-900 border-purple-400'
-            : 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
+            ? 'bg-purple-300 text-purple-900 border-purple-400'
+            : 'bg-purple-100 text-purple-700 border-purple-300',
           pressedKeys.has('Tab') ? 'bg-purple-400 pressed' : '',
         ]"
         style="flex: 1.2 1 0%"
@@ -161,7 +173,7 @@
         keyValue=","
         :pressed="pressedKeys.has(',')"
         :buttonClass="[
-          'keyboard-key w-full bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has(',') ? 'bg-gray-200 pressed' : '',
         ]"
         style="flex: 1 1 0%"
@@ -175,7 +187,7 @@
         keyValue=" "
         :pressed="pressedKeys.has(' ')"
         :buttonClass="[
-          'keyboard-key w-full bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has(' ') ? 'bg-gray-200 pressed' : '',
         ]"
         style="flex: 5 1 0%"
@@ -189,7 +201,7 @@
         keyValue="."
         :pressed="pressedKeys.has('.')"
         :buttonClass="[
-          'keyboard-key w-full bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has('.') ? 'bg-gray-200 pressed' : '',
         ]"
         style="flex: 1 1 0%"
@@ -203,7 +215,7 @@
         keyValue="Enter"
         :pressed="pressedKeys.has('Enter')"
         :buttonClass="[
-          'keyboard-key w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
+          'keyboard-key w-full bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
           pressedKeys.has('Enter') ? 'bg-gray-300 pressed' : '',
         ]"
         style="flex: 1.2 1 0%"
@@ -250,7 +262,10 @@ function handleKeyDown(key) {
   if ("vibrate" in navigator) {
     navigator.vibrate(10);
   }
-  pressedKeys.value.add(key);
+  // Normalize letter keys to uppercase for consistent pressed state tracking
+  const normalizedKey =
+    key.length === 1 && /[a-zA-Z]/.test(key) ? key.toUpperCase() : key;
+  pressedKeys.value.add(normalizedKey);
   keyboardActions.pressKey(key);
 
   if (key === "Backspace") {
@@ -293,17 +308,24 @@ function handleKeyDown(key) {
 }
 
 function handleShiftPress() {
-  if (isPermanentCaps.value) {
-    // If permanent caps is on, short press turns it off
-    isPermanentCaps.value = false;
+  if (keyboardState.value.isCapsLock) {
+    // If caps lock is on, turn it off
     keyboardState.value.isCapsLock = false;
+    isPermanentCaps.value = false;
   } else {
-    // Short press: sticky shift
+    // If caps lock is off, turn it on (sticky shift)
     keyboardState.value.isCapsLock = true;
+    // Trigger vibration when sticky shift is activated
+    if ("vibrate" in navigator) {
+      navigator.vibrate(20);
+    }
     // Long press: turn on permanent caps
     shiftTimeout.value = setTimeout(() => {
       isPermanentCaps.value = true;
-      keyboardState.value.isCapsLock = true;
+      // Trigger vibration when permanent caps is activated
+      if ("vibrate" in navigator) {
+        navigator.vibrate(20); // Single vibration
+      }
     }, 500);
   }
 }
@@ -316,7 +338,10 @@ function handleShiftRelease() {
 }
 
 function handleKeyUp(key) {
-  pressedKeys.value.delete(key);
+  // Normalize letter keys to uppercase for consistent pressed state tracking
+  const normalizedKey =
+    key.length === 1 && /[a-zA-Z]/.test(key) ? key.toUpperCase() : key;
+  pressedKeys.value.delete(normalizedKey);
 
   if (key === "Backspace") {
     // Emit one more backspace on release
