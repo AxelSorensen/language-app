@@ -3,7 +3,7 @@
     ref="tooltipRef"
     v-if="text && enabled"
     :class="[
-      'fixed z-100 px-3 py-2 text-sm rounded-xl border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity',
+      'fixed z-100 px-3 py-2 text-sm rounded-xl border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 pointer-events-none transition-opacity',
       `tooltip-${direction}`,
       type === 'translation'
         ? ' text-gray-600'
@@ -35,9 +35,9 @@
         : null
     "
   >
-    <div class="flex items-center gap-2">
+    <div class="flex items-center">
       <span
-        class="inline-flex items-center gap-1"
+        class="inline-flex justify-between items-center gap-2"
         :class="
           (type === 'translation' && text === 'unknown') || type === 'unknown'
             ? 'text-red-600'
@@ -45,7 +45,7 @@
         "
       >
         <span
-          class="inline-flex items-center justify-center w-5 h-5 rounded-full"
+          class="flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0"
           :class="
             type === 'translation' && text !== 'unknown'
               ? 'bg-gray-200'
@@ -55,29 +55,31 @@
               : 'bg-green-100'
           "
         >
-          <Icon
-            :name="
-              type === 'translation' && text !== 'unknown'
-                ? 'heroicons:language'
-                : type === 'sentence'
-                ? 'heroicons:check'
-                : (type === 'translation' && text === 'unknown') ||
-                  type === 'unknown'
-                ? 'heroicons:x-mark'
-                : 'heroicons:check'
-            "
-            class="w-3 h-3"
-            :class="
-              type === 'translation' && text !== 'unknown'
-                ? 'text-gray-600'
-                : type === 'sentence'
-                ? 'text-green-600'
-                : (type === 'translation' && text === 'unknown') ||
-                  type === 'unknown'
-                ? 'text-red-600'
-                : 'text-green-600'
-            "
-          />
+          <div class="flex">
+            <Icon
+              :name="
+                type === 'translation' && text !== 'unknown'
+                  ? 'heroicons:language'
+                  : type === 'sentence'
+                  ? 'heroicons:check'
+                  : (type === 'translation' && text === 'unknown') ||
+                    type === 'unknown'
+                  ? 'heroicons:x-mark'
+                  : 'heroicons:check'
+              "
+              class="w-3 h-3"
+              :class="
+                type === 'translation' && text !== 'unknown'
+                  ? 'text-gray-600'
+                  : type === 'sentence'
+                  ? 'text-green-600'
+                  : (type === 'translation' && text === 'unknown') ||
+                    type === 'unknown'
+                  ? 'text-red-600'
+                  : 'text-green-600'
+              "
+            />
+          </div>
         </span>
         {{
           (text === "unknown" && type !== "unknown") || type === "unknown"

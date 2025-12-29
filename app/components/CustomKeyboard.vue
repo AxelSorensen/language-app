@@ -246,8 +246,41 @@ const { state: keyboardState, actions: keyboardActions } = useKeyboard();
 const emit = defineEmits(["on-key-press"]);
 
 function handleKeyDown(key) {
+  // Trigger vibration if supported
+  if ("vibrate" in navigator) {
+    navigator.vibrate(10);
+  }
+  pressedKeys.value.add(key);
   keyboardActions.pressKey(key);
-  emit("on-key-press", key);
+
+  if (key === "Backspace") {
+    // Clear any existing timers
+    if (deleteTimeout.value) clearTimeout(deleteTimeout.value);
+    if (deleteInterval.value) clearInterval(deleteInterval.value);
+    if (deleteSpeedUpTimeout.value) clearTimeout(deleteSpeedUpTimeout.value);
+
+    // Start repeat deletion after 250ms
+    deleteTimeout.value = setTimeout(() => {
+      deleteInterval.value = setInterval(() => {
+        if (pressedKeys.value.has("Backspace")) {
+          emit("on-key-press", key);
+        }
+      }, 100); // Initial speed: 100ms per deletion
+
+      // Speed up after 2 seconds
+      deleteSpeedUpTimeout.value = setTimeout(() => {
+        clearInterval(deleteInterval.value);
+        deleteInterval.value = setInterval(() => {
+          if (pressedKeys.value.has("Backspace")) {
+            emit("on-key-press", key);
+          }
+        }, 50); // Faster speed: 50ms per deletion
+      }, 2000);
+    }, 250);
+  } else {
+    emit("on-key-press", key);
+  }
+
   // If caps lock is on and not permanent, and a letter was pressed, turn it off
   if (
     !isPermanentCaps.value &&
@@ -279,6 +312,29 @@ function handleShiftRelease() {
   if (shiftTimeout.value) {
     clearTimeout(shiftTimeout.value);
     shiftTimeout.value = null;
+  }
+}
+
+function handleKeyUp(key) {
+  pressedKeys.value.delete(key);
+
+  if (key === "Backspace") {
+    // Emit one more backspace on release
+    emit("on-key-press", key);
+
+    // Clear all backspace repeat timers
+    if (deleteTimeout.value) {
+      clearTimeout(deleteTimeout.value);
+      deleteTimeout.value = null;
+    }
+    if (deleteInterval.value) {
+      clearInterval(deleteInterval.value);
+      deleteInterval.value = null;
+    }
+    if (deleteSpeedUpTimeout.value) {
+      clearTimeout(deleteSpeedUpTimeout.value);
+      deleteSpeedUpTimeout.value = null;
+    }
   }
 }
 </script>

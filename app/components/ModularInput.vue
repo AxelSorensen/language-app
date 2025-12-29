@@ -64,7 +64,7 @@
         @blur="$emit('blur-translate')"
       />
       <SimpleTooltip
-        :ref="(el) => tooltipRefs[idx] = el"
+        :ref="(el) => (tooltipRefs[idx] = el)"
         :text="
           word.correction ||
           (word.sentenceError
@@ -86,6 +86,7 @@
             : 'translation'
         "
         :enabled="!!(word.correction || word.sentenceError || word.translation)"
+        :class="{ 'opacity-100': hoveredIdx === idx }"
         @click="
           word.correction
             ? handleApplyCorrection(idx)
@@ -224,6 +225,8 @@ const saveSelection = (idx: number) => {
   // Reset correction and translation on input
   words.value[idx].correction = null;
   words.value[idx].translation = null;
+  // Close any open tooltips when typing
+  hoveredIdx.value = null;
   // Start typing timeout for processing
   if (typingTimeout.value) clearTimeout(typingTimeout.value);
   typingTimeout.value = setTimeout(() => {
