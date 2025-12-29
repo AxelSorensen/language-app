@@ -100,7 +100,7 @@ export const useWords = () => {
     }
 
     // Cancel any existing processing for this word
-    cancelWordProcessing(id);
+    // cancelWordProcessing(id);
 
     const controller = new AbortController();
     abortControllers.value.set(id, controller);
