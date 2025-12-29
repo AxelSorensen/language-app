@@ -6,76 +6,82 @@ export interface DictionaryEntry {
   translation: string;
   addedAt: Date;
   language: string;
+  usageCount: number;
 }
 
 export const useDictionary = () => {
-  const dictionary = useState<DictionaryEntry[]>("dictionary", () => {
-    // Load from localStorage if available
-    if (process.client) {
-      const stored = localStorage.getItem("language-app-dictionary");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          // Convert date strings back to Date objects
-          return parsed.map((entry: any) => ({
-            ...entry,
-            addedAt: new Date(entry.addedAt),
-          }));
-        } catch (e) {
-          console.error("Failed to parse dictionary from localStorage:", e);
-        }
-      }
+  const dictionary = useState<DictionaryEntry[]>("dictionary", () => []);
+  const newlyAddedWords = useState<Set<string>>(
+    "newlyAddedWords",
+    () => new Set()
+  );
+  const newWordsCount = useState<number>("newWordsCount", () => 0);
+  const favoritedWords = useState<Set<string>>(
+    "favoritedWords",
+    () => new Set()
+  );
+
+  // Ensure all entries have usageCount for backward compatibility
+  dictionary.value.forEach((entry) => {
+    if (typeof entry.usageCount !== "number") {
+      entry.usageCount = 1;
     }
-    return [];
   });
 
-  // Save to localStorage whenever dictionary changes
-  const saveToStorage = () => {
-    if (process.client) {
-      localStorage.setItem(
-        "language-app-dictionary",
-        JSON.stringify(dictionary.value)
-      );
-    }
-  };
-
   const addWord = (word: string, translation: string, language: string) => {
-    // Check if word already exists
-    const exists = dictionary.value.some(
-      (entry) =>
-        entry.word.toLowerCase() === word.toLowerCase() &&
-        entry.language === language
+    // Clean the word by removing commas and dots, and make lowercase
+    const cleanedWord = word.replace(/[,.]/g, "").trim().toLowerCase();
+
+    // Check if cleaned word already exists
+    const existingIndex = dictionary.value.findIndex(
+      (entry) => entry.word === cleanedWord && entry.language === language
     );
 
-    if (!exists) {
+    if (existingIndex !== -1) {
+      // Ensure usageCount exists (for backward compatibility)
+      if (typeof dictionary.value[existingIndex].usageCount !== "number") {
+        dictionary.value[existingIndex].usageCount = 1;
+      }
+      // Increment usage count
+      dictionary.value[existingIndex].usageCount += 1;
+      console.log(
+        `Incremented usage for "${cleanedWord}" to ${dictionary.value[existingIndex].usageCount}`
+      );
+      return false; // Word already existed
+    } else if (cleanedWord) {
       dictionary.value.push({
-        word,
+        word: cleanedWord,
         translation,
         addedAt: new Date(),
         language,
+        usageCount: 1,
       });
-      saveToStorage();
-      console.log(`Added "${word}" to dictionary`);
+      // Mark as newly added for flashing effect
+      const key = `${cleanedWord}`;
+      newlyAddedWords.value.add(key);
+      // Remove from newly added after 2 seconds
+      // Increment new words count
+      newWordsCount.value++;
+      console.log(`Added "${cleanedWord}" to dictionary`);
+      return true; // Word was newly added
     }
+    return false; // Empty word, not added
   };
 
   const removeWord = (word: string, language: string) => {
     const index = dictionary.value.findIndex(
       (entry) =>
-        entry.word.toLowerCase() === word.toLowerCase() &&
-        entry.language === language
+        entry.word === word.toLowerCase() && entry.language === language
     );
     if (index !== -1) {
       dictionary.value.splice(index, 1);
-      saveToStorage();
     }
   };
 
   const hasWord = (word: string, language: string) => {
     return dictionary.value.some(
       (entry) =>
-        entry.word.toLowerCase() === word.toLowerCase() &&
-        entry.language === language
+        entry.word === word.toLowerCase() && entry.language === language
     );
   };
 
@@ -83,22 +89,47 @@ export const useDictionary = () => {
     return dictionary.value.filter((entry) => entry.language === language);
   };
 
+  const clearNewWordsCount = () => {
+    newWordsCount.value = 0;
+  };
+
+  const clearNewlyAddedWords = () => {
+    newlyAddedWords.value.clear();
+  };
+
+  const toggleFavorite = (word: string) => {
+    const key = word.toLowerCase();
+    if (favoritedWords.value.has(key)) {
+      favoritedWords.value.delete(key);
+    } else {
+      favoritedWords.value.add(key);
+    }
+  };
+
+  const isFavorited = (word: string) => {
+    return favoritedWords.value.has(word.toLowerCase());
+  };
+
   const clearDictionary = () => {
     dictionary.value = [];
-    if (process.client) {
-      localStorage.removeItem("language-app-dictionary");
-    }
   };
 
   const totalWords = computed(() => dictionary.value.length);
 
   return {
     dictionary: readonly(dictionary),
+    newlyAddedWords: readonly(newlyAddedWords),
+    newWordsCount: readonly(newWordsCount),
+    favoritedWords: readonly(favoritedWords),
     addWord,
     removeWord,
     hasWord,
     getWordsForLanguage,
     clearDictionary,
+    clearNewWordsCount,
+    clearNewlyAddedWords,
+    toggleFavorite,
+    isFavorited,
     totalWords,
   };
 };

@@ -11,6 +11,7 @@ export interface Word {
   translation?: string | null;
   status: "empty" | "pending" | "checked" | "error" | "idle";
   sentenceError?: { correction: string; explanation: string } | null;
+  newlyAdded?: boolean;
 }
 
 export const useWords = () => {
@@ -24,6 +25,7 @@ export const useWords = () => {
       translation: null,
       status: "idle",
       sentenceError: null,
+      newlyAdded: false,
     });
   }
 
@@ -48,6 +50,7 @@ export const useWords = () => {
         translation: null,
         status: "idle",
         sentenceError: null,
+        newlyAdded: false,
       },
     ];
   };
@@ -95,6 +98,9 @@ export const useWords = () => {
     const word = words.value.find((w) => w.id === id);
     if (!word) return;
 
+    // Clean the word by removing commas and dots, and make lowercase
+    const cleanedWordText = word.text.toLowerCase().replace(/[,.]/g, "").trim();
+
     if (!fullText.trim() && words.value.length > 1) {
       words.value = [];
       return;
@@ -116,19 +122,49 @@ export const useWords = () => {
       }
     };
 
-    console.log("Processing word:", word.text, "status before:", word.status);
+    console.log(
+      "Processing word:",
+      cleanedWordText,
+      "status before:",
+      word.status
+    );
     updateWord((w) => ({ ...w, status: "pending" }));
     console.log("Status set to pending for word:", word.text);
 
     try {
       // Call spell-check and translation separately
       const [spellResult, translateResult] = await Promise.all([
-        LanguageService.spellCheck(word.text, fullText, controller.signal),
-        LanguageService.wordTranslate(word.text, fullText, controller.signal),
+        LanguageService.spellCheck(
+          cleanedWordText,
+          fullText,
+          controller.signal
+        ),
+        LanguageService.wordTranslate(
+          cleanedWordText,
+          fullText,
+          controller.signal
+        ),
       ]);
 
       // Remove controller if successful
       abortControllers.value.delete(id);
+
+      // Add to dictionary if word is valid and has translation
+      let wasAddedToDictionary = false;
+      if (
+        spellResult.type === "valid" &&
+        translateResult.translation !== "unknown"
+      ) {
+        const { addWord } = useDictionary();
+        const settingsCookie = useCookie("settings");
+        const targetLanguage =
+          settingsCookie.value?.targetLanguage?.name || "Spanish";
+        wasAddedToDictionary = addWord(
+          cleanedWordText,
+          translateResult.translation,
+          targetLanguage
+        );
+      }
 
       updateWord((w) => ({
         ...w,
@@ -139,26 +175,29 @@ export const useWords = () => {
             ? "unknown"
             : translateResult.translation,
         status: "checked",
+        newlyAdded: wasAddedToDictionary ? true : w.newlyAdded,
       }));
 
-      // Add to dictionary if word is valid and has translation
-      if (
-        spellResult.type === "valid" &&
-        translateResult.translation !== "unknown"
-      ) {
-        const { addWord } = useDictionary();
-        const settingsCookie = useCookie("settings");
-        const targetLanguage =
-          settingsCookie.value?.targetLanguage?.name || "Spanish";
-        addWord(word.text.trim(), translateResult.translation, targetLanguage);
+      // If newly added, clear all other newlyAdded flags and remove this one after 1 second
+      if (wasAddedToDictionary) {
+        // Clear all other newlyAdded flags
+        words.value.forEach((word, index) => {
+          if (word.id !== id && word.newlyAdded) {
+            words.value[index] = { ...word, newlyAdded: false };
+          }
+        });
+
+        setTimeout(() => {
+          updateWord((w) => ({ ...w, newlyAdded: false }));
+        }, 1000);
       }
 
-      console.log("Status set to checked for word:", word.text);
+      console.log("Status set to checked for word:", cleanedWordText);
     } catch (error) {
       // Remove controller on error
       abortControllers.value.delete(id);
       if (error.name === "AbortError") {
-        console.log("Word processing cancelled for:", word.text);
+        console.log("Word processing cancelled for:", cleanedWordText);
         // Reset status to idle if cancelled
         updateWord((w) => ({ ...w, status: "idle" }));
         return;

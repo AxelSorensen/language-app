@@ -1,6 +1,6 @@
 export const NATIVE_LANGUAGE = "English";
 
-export const WORD_GOAL = 100;
+export const WORD_GOAL = 10;
 
 export const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
   zh: `IMPORTANT: The input is in Pinyin (romanized Chinese). Translate from Pinyin to ${NATIVE_LANGUAGE}. If tone marks are missing, infer the most likely meaning based on common usage.`,

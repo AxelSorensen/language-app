@@ -11,8 +11,10 @@ export default defineEventHandler(async (event) => {
   const sourceLanguage = body?.sourceLanguage || NATIVE_LANGUAGE;
   const settings = getCookie(event, "settings");
   const parsedSettings = settings ? JSON.parse(settings) : null;
-  const targetLanguageId = parsedSettings?.targetLanguage?.id || "es";
-  const targetLanguage = parsedSettings?.targetLanguage?.name || "Spanish";
+  const targetLanguageId =
+    body?.target || parsedSettings?.targetLanguage?.id || "es";
+  const targetLanguage =
+    body?.targetName || parsedSettings?.targetLanguage?.name || "Spanish";
 
   // Use extra instructions if available
   const extraInstruction = LANGUAGE_INSTRUCTIONS?.[targetLanguageId] || "";
@@ -22,12 +24,11 @@ export default defineEventHandler(async (event) => {
 
   if (sentence) {
     // Sentence translation (like translate_sentence_to_english)
-    prompt = `You are a language assistant. Translate the given sentence from ${sourceLanguage} to ${targetLanguage}.
+    prompt = `You are a language assistant. Translate the given sentence from ${sourceLanguage} to ${targetLanguageId}.
 
 Sentence to translate: ${sentence}
 
-Please translate the entire sentence to ${targetLanguage}, maintaining the same level of formality and structure as the original.
-${extraInstruction}
+Please translate the entire sentence to ${targetLanguageId}, maintaining the same level of formality and structure as the original.
 
 Return only the translated sentence.`;
     input = `Translate sentence: ${sentence}`;

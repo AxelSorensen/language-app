@@ -10,6 +10,12 @@
       >
         <h2 class="text-lg font-semibold text-gray-800">Vocabulary</h2>
         <div class="flex items-center gap-2">
+          <span
+            v-if="newWordsCount > 0"
+            class="bg-green-500 text-white text-xs px-2 py-1 rounded-full"
+          >
+            {{ newWordsCount }} new
+          </span>
           <span class="text-sm text-gray-500">{{ totalWords }} words</span>
           <button
             @click="closeSidebar"
@@ -32,11 +38,34 @@
         </div>
       </div>
 
-      <!-- Content -->
+      <!-- Search Bar -->
+      <div class="p-4 border-b border-gray-200">
+        <div class="relative">
+          <svg
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            ></path>
+          </svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search words or translations..."
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
       <div class="flex-1 overflow-y-auto p-4">
         <div
           v-if="dictionaryWords.length === 0"
-          class="text-center text-gray-500 py-8"
+          class="h-full flex flex-col items-center justify-center text-center text-gray-500"
         >
           <svg
             class="w-12 h-12 mx-auto mb-4 text-gray-300"
@@ -57,55 +86,94 @@
           </p>
         </div>
 
+        <div
+          v-else-if="filteredWords.length === 0"
+          class="h-full flex flex-col items-center justify-center text-center text-gray-500"
+        >
+          <svg
+            class="w-12 h-12 mx-auto mb-4 text-gray-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            ></path>
+          </svg>
+          <p>No words match your search</p>
+          <p class="text-sm mt-1">Try a different search term</p>
+        </div>
+
         <div v-else class="space-y-2">
           <div
-            v-for="entry in sortedWords"
+            v-for="entry in filteredWords"
             :key="`${entry.word}-${entry.language}`"
-            class="bg-gray-50 rounded-lg p-3 border border-gray-200"
+            class="bg-gray-50 rounded-lg p-3 border border-gray-200 transition-all duration-500"
           >
-            <div class="flex items-start justify-between">
-              <div class="flex-1">
-                <div class="font-medium text-gray-900">{{ entry.word }}</div>
-                <div class="text-sm text-gray-600 mt-1">
-                  {{ entry.translation }}
+            <div class="flex flex-col">
+              <div class="flex items-start justify-between">
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">
+                    {{ entry.word }}
+                  </div>
+                  <div class="text-sm text-gray-600 mt-1">
+                    {{ entry.translation }}
+                  </div>
                 </div>
-                <div class="text-xs text-gray-400 mt-1">
-                  Added {{ formatDate(entry.addedAt) }}
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="isNewlyAdded(entry)"
+                    class="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
+                  >
+                    NEW
+                  </span>
+                  <button
+                    @click="handleHeartClick(entry.word)"
+                    class="p-1 transition-colors"
+                    :class="[
+                      isFavorited(entry.word)
+                        ? 'text-red-500'
+                        : 'text-gray-400 hover:text-red-500',
+                      {
+                        'heart-click': heartAnimating.has(
+                          entry.word.toLowerCase()
+                        ),
+                      },
+                    ]"
+                    title="Toggle favorite"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      :fill="isFavorited(entry.word) ? 'currentColor' : 'none'"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      ></path>
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <button
-                @click="removeWord(entry.word, entry.language)"
-                class="text-gray-400 hover:text-red-500 transition-colors p-1"
-                title="Remove from dictionary"
-              >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  ></path>
-                </svg>
-              </button>
+              <div class="flex justify-between mt-4">
+                <div class="text-xs text-gray-400">
+                  Added {{ formatDate(entry.addedAt) }}
+                </div>
+                <div class="text-xs text-gray-400">
+                  Used {{ entry.usageCount }} time{{
+                    entry.usageCount !== 1 ? "s" : ""
+                  }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="border-t border-gray-200 p-4">
-        <button
-          @click="clearDictionary"
-          class="w-full px-4 py-2 text-sm text-red-600 border border-red-300 rounded-md hover:bg-red-50 transition-colors"
-          :disabled="dictionaryWords.length === 0"
-        >
-          Clear All Words
-        </button>
       </div>
     </div>
   </div>
@@ -121,7 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useDictionary } from "~/composables/useDictionary";
 
 interface Props {
@@ -134,17 +202,36 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+const searchQuery = ref("");
+const heartAnimating = ref(new Set<string>());
+
 const {
   dictionary: dictionaryWords,
+  newlyAddedWords,
+  newWordsCount,
   removeWord,
   clearDictionary,
+  clearNewWordsCount,
+  clearNewlyAddedWords,
+  toggleFavorite,
+  isFavorited,
   totalWords,
 } = useDictionary();
 
-const sortedWords = computed(() => {
-  return [...dictionaryWords.value].sort(
-    (a, b) => b.addedAt.getTime() - a.addedAt.getTime()
-  );
+const filteredWords = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim();
+  if (!query) {
+    return [...dictionaryWords.value].sort(
+      (a, b) => b.addedAt.getTime() - a.addedAt.getTime()
+    );
+  }
+  return dictionaryWords.value
+    .filter(
+      (entry) =>
+        entry.word.toLowerCase().includes(query) ||
+        entry.translation.toLowerCase().includes(query)
+    )
+    .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime());
 });
 
 const formatDate = (date: Date) => {
@@ -163,7 +250,23 @@ const formatDate = (date: Date) => {
   }
 };
 
+const isNewlyAdded = (entry: { word: string; language: string }) => {
+  const key = `${entry.word.toLowerCase()}`;
+  return newlyAddedWords.value.has(key);
+};
+
+const handleHeartClick = (word: string) => {
+  const key = word.toLowerCase();
+  heartAnimating.value.add(key);
+  toggleFavorite(word);
+  setTimeout(() => {
+    heartAnimating.value.delete(key);
+  }, 200);
+};
+
 const closeSidebar = () => {
+  clearNewWordsCount();
+  clearNewlyAddedWords();
   emit("close");
 };
 
@@ -194,6 +297,22 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+.heart-click {
+  animation: heartPop 0.2s ease;
+}
+
+@keyframes heartPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Mobile styles (default) */
 .sidebar-container {
   width: 100vw;
@@ -209,7 +328,7 @@ onUnmounted(() => {
 /* Desktop styles */
 @media (min-width: 768px) {
   .sidebar-container {
-    width: 320px;
+    width: 33.333vw;
     right: 0;
     left: auto;
     border-left: 1px solid #e5e7eb;

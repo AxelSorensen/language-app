@@ -6,12 +6,12 @@
     </header>
 
     <!-- Content Section -->
-    <main class="flex-1 flex items-center justify-center overflow-hidden">
+    <main class="flex-1 flex items-center justify-center">
       <slot name="content" />
     </main>
 
     <!-- Keyboard Section -->
-    <footer class="shrink-0 sm:hidden">
+    <footer class="shrink-0">
       <slot name="keyboard" />
     </footer>
   </div>
