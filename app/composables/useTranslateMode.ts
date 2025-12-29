@@ -73,6 +73,9 @@ export function useTranslateMode(): TranslateModeComposable {
 
     state.value.isTranslating = false;
 
+    // Exit translate mode immediately after successful translation
+    state.value.translateMode = false;
+
     const translatedText = response.translation;
     const newWords = translatedText
       .split(" ")
@@ -118,7 +121,7 @@ export function useTranslateMode(): TranslateModeComposable {
     }
 
     // After translating, exit translate mode
-    state.value.translateMode = false;
+    // state.value.translateMode = false; // Already done above
 
     // Clear the translate input
     state.value.wordsToTranslate = "";

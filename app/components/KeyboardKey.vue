@@ -2,7 +2,7 @@
   <button
     @focus.prevent
     tabindex="-1"
-    :class="[buttonClass, { pressed: isPressed }]"
+    :class="buttonClass"
     @mousedown="handlePress"
     @mouseup="handleRelease"
     @mouseleave="handleRelease"
@@ -20,11 +20,6 @@
     >
       {{ displayValue }}
     </div>
-    <!-- Key highlight overlay -->
-    <div
-      v-if="isPressed"
-      class="absolute inset-0 bg-gray-300 rounded-md opacity-40 pointer-events-none"
-    ></div>
   </button>
 </template>
 

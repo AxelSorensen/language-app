@@ -2,6 +2,7 @@ import { useState } from "#app";
 import { ref, computed } from "vue";
 import { LanguageService } from "~/services/LanguageService";
 import { generateRandomId } from "~/utils/misc";
+import { useDictionary } from "~/composables/useDictionary";
 
 export interface Word {
   id: string;
@@ -139,6 +140,19 @@ export const useWords = () => {
             : translateResult.translation,
         status: "checked",
       }));
+
+      // Add to dictionary if word is valid and has translation
+      if (
+        spellResult.type === "valid" &&
+        translateResult.translation !== "unknown"
+      ) {
+        const { addWord } = useDictionary();
+        const settingsCookie = useCookie("settings");
+        const targetLanguage =
+          settingsCookie.value?.targetLanguage?.name || "Spanish";
+        addWord(word.text.trim(), translateResult.translation, targetLanguage);
+      }
+
       console.log("Status set to checked for word:", word.text);
     } catch (error) {
       // Remove controller on error

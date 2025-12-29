@@ -10,7 +10,7 @@
         :pressed="pressedKeys.has(key)"
         :buttonClass="[
           'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-colors duration-75 border border-gray-300 shadow-sm',
-          pressedKeys.has(key) ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has(key) ? 'bg-gray-200' : '',
         ]"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -28,7 +28,7 @@
         :pressed="pressedKeys.has(key)"
         :buttonClass="[
           'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(key) ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has(key) ? 'bg-gray-200' : '',
         ]"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -49,7 +49,7 @@
           keyboardState.isCapsLock
             ? 'bg-gray-800 active:bg-black text-white border-gray-600'
             : 'bg-gray-100 active:bg-gray-300 text-gray-700 border-gray-300',
-          pressedKeys.has('Shift') ? 'bg-gray-400 pressed' : '',
+          pressedKeys.has('Shift') ? 'bg-gray-400' : '',
         ]"
         @press="handleShiftPress"
         @release="handleShiftRelease"
@@ -75,7 +75,7 @@
         :pressed="pressedKeys.has(key)"
         :buttonClass="[
           'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(key) ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has(key) ? 'bg-gray-200' : '',
         ]"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -88,7 +88,7 @@
         :pressed="pressedKeys.has('Backspace')"
         :buttonClass="[
           'keyboard-key flex-[1.5] min-w-0 bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('Backspace') ? 'bg-gray-300 pressed' : '',
+          pressedKeys.has('Backspace') ? 'bg-gray-300' : '',
         ]"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -108,7 +108,6 @@
           props.translateMode
             ? 'bg-purple-300 text-purple-900 border-purple-400'
             : 'bg-purple-100 text-purple-700 border-purple-300',
-          pressedKeys.has('Tab') ? 'bg-purple-400 pressed' : '',
         ]"
         style="flex: 1.2 1 0%"
         @press="handleKeyDown"
@@ -174,7 +173,7 @@
         :pressed="pressedKeys.has(',')"
         :buttonClass="[
           'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(',') ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has(',') ? 'bg-gray-200' : '',
         ]"
         style="flex: 1 1 0%"
         @press="handleKeyDown"
@@ -188,7 +187,7 @@
         :pressed="pressedKeys.has(' ')"
         :buttonClass="[
           'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(' ') ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has(' ') ? 'bg-gray-200' : '',
         ]"
         style="flex: 5 1 0%"
         @press="handleKeyDown"
@@ -202,7 +201,7 @@
         :pressed="pressedKeys.has('.')"
         :buttonClass="[
           'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('.') ? 'bg-gray-200 pressed' : '',
+          pressedKeys.has('.') ? 'bg-gray-200' : '',
         ]"
         style="flex: 1 1 0%"
         @press="handleKeyDown"
@@ -216,7 +215,7 @@
         :pressed="pressedKeys.has('Enter')"
         :buttonClass="[
           'keyboard-key w-full bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('Enter') ? 'bg-gray-300 pressed' : '',
+          pressedKeys.has('Enter') ? 'bg-gray-300' : '',
         ]"
         style="flex: 1.2 1 0%"
         @press="handleKeyDown"
@@ -371,12 +370,6 @@ function handleKeyUp(key) {
   -webkit-tap-highlight-color: transparent;
   position: relative;
   z-index: 1;
-}
-
-.keyboard-key.pressed {
-  transform: scale(0.98);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .keyboard-key:active {

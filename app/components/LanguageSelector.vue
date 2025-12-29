@@ -1,7 +1,7 @@
 <template>
   <select
     v-model="targetLanguage"
-    class="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+    class="cursor-pointer px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-9"
     @change="updateLanguages"
   >
     <option v-for="lang in languages" :key="lang.id" :value="lang">
@@ -14,6 +14,7 @@
 import { ref, onMounted, watch } from "vue";
 
 const languages = [
+  { id: "en", name: "English" },
   { id: "es", name: "Spanish" },
   { id: "da", name: "Danish" },
   { id: "fr", name: "French" },
@@ -37,6 +38,7 @@ const emit = defineEmits(["languageChange"]);
 
 function getFlag(id) {
   const flags = {
+    en: "🇺🇸",
     da: "🇩🇰",
     es: "🇪🇸",
     fr: "🇫🇷",
