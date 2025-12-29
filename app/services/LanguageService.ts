@@ -29,17 +29,27 @@ export class LanguageService {
     });
   }
 
-  static async spellCheck(input: string, context: string) {
+  static async spellCheck(
+    input: string,
+    context: string,
+    signal?: AbortSignal
+  ) {
     return $fetch(`/api/spell-check`, {
       method: "POST",
       body: { input, context },
+      signal,
     });
   }
 
-  static async wordTranslate(input: string, context: string) {
+  static async wordTranslate(
+    input: string,
+    context: string,
+    signal?: AbortSignal
+  ) {
     return $fetch(`/api/word-translate`, {
       method: "POST",
       body: { input, context },
+      signal,
     });
   }
 

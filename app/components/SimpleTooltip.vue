@@ -1,8 +1,10 @@
 <template>
   <span
+    ref="tooltipRef"
     v-if="text && enabled"
     :class="[
-      'absolute left-1/2 -translate-x-1/2 -top-10 px-3 py-2 text-sm rounded-xl z-100 whitespace-nowrap border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity',
+      'fixed z-100 px-3 py-2 text-sm rounded-xl border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity',
+      `tooltip-${direction}`,
       type === 'translation'
         ? ' text-gray-600'
         : type === 'correction' && text === 'null'
@@ -16,6 +18,10 @@
           }`,
     ]"
     :style="{
+      left: tooltipStyle.left,
+      top: tooltipStyle.top,
+      transform: tooltipStyle.transform,
+      '--arrow-left': tooltipStyle.arrowLeft,
       cursor:
         (type === 'correction' && text !== 'null') || type === 'unknown'
           ? 'pointer'
@@ -143,7 +149,7 @@
   </span>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, nextTick, watch } from "vue";
 
 const props = defineProps({
   text: { type: String, default: "" },
@@ -152,14 +158,137 @@ const props = defineProps({
   explanation: { type: String, default: "" },
 });
 const isHoveringInfo = ref(false);
+const tooltipRef = ref<HTMLElement>();
+const tooltipStyle = ref({ left: "", top: "", transform: "", arrowLeft: "" });
+const direction = ref<"top" | "bottom">("top");
+// Change this variable to 'top' or 'bottom' to control tooltip position
+const tooltipDirection = "auto"; // 'auto', 'top', or 'bottom'
+
+const adjustPosition = () => {
+  nextTick(() => {
+    if (tooltipRef.value) {
+      const rect = tooltipRef.value.getBoundingClientRect();
+      const parentRect =
+        tooltipRef.value.parentElement?.getBoundingClientRect();
+      if (!parentRect) return;
+
+      console.log(
+        "Adjusting tooltip position, rect:",
+        rect,
+        "parentRect:",
+        parentRect
+      );
+      const padding = 20;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Determine direction
+      if (tooltipDirection === "auto") {
+        if (parentRect.top >= 200) {
+          direction.value = "top";
+        } else {
+          direction.value = "bottom";
+        }
+      } else {
+        direction.value = tooltipDirection;
+      }
+
+      // Default position based on direction
+      let left = parentRect.left + parentRect.width / 2;
+      let top;
+      if (direction.value === "top") {
+        top = parentRect.top - 40;
+      } else {
+        top = parentRect.bottom + 7;
+      }
+      let transform = "translateX(-50%) translateY(0px)";
+
+      // Clamp horizontally
+      if (left - rect.width / 2 < padding) {
+        left = padding + rect.width / 2;
+      } else if (left + rect.width / 2 > viewportWidth - padding) {
+        left = viewportWidth - padding - rect.width / 2;
+      }
+
+      // Clamp vertically
+      if (direction.value === "top") {
+        if (top < padding) {
+          top = padding;
+        }
+      } else {
+        if (top + rect.height > viewportHeight - padding) {
+          top = viewportHeight - rect.height - padding;
+        }
+      }
+
+      // Calculate arrow position to point to the word
+      const tooltipLeft = left - rect.width / 2;
+      const parentCenter = parentRect.left + parentRect.width / 2;
+      const arrowOffset = parentCenter - tooltipLeft;
+      const arrowLeftPercent = (arrowOffset / rect.width) * 100;
+
+      tooltipStyle.value = {
+        left: `${left}px`,
+        top: `${top}px`,
+        transform,
+        arrowLeft: `${arrowLeftPercent}%`,
+      };
+      // Adjust top based on actual height to keep arrow pointing correctly
+      setTimeout(() => {
+        const newRect = tooltipRef.value?.getBoundingClientRect();
+        if (newRect && parentRect) {
+          let adjustedTop;
+          if (direction.value === "top") {
+            adjustedTop = parentRect.top - newRect.height;
+          } else {
+            adjustedTop = parentRect.bottom + 6;
+          }
+          const clampedTop = Math.max(
+            padding,
+            Math.min(adjustedTop, viewportHeight - newRect.height - padding)
+          );
+          if (clampedTop !== parseFloat(tooltipStyle.value.top)) {
+            tooltipStyle.value.top = `${clampedTop}px`;
+          }
+        }
+      }, 0);
+      console.log("Tooltip style set to:", tooltipStyle.value);
+    }
+  });
+};
+
+onMounted(() => {
+  console.log("Mounted tooltip with text:", props.text);
+  adjustPosition();
+});
+
+watch(
+  () => props.enabled,
+  (newVal) => {
+    if (newVal) {
+      adjustPosition();
+    }
+  }
+);
+
+watch(
+  () => props.text,
+  (newVal) => {
+    if (newVal && props.enabled) {
+      adjustPosition();
+    }
+  }
+);
+
+defineExpose({ adjustPosition });
 </script>
 
 <style scoped>
-.tooltip-bubble::before {
+.tooltip-bubble.tooltip-top::before {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
+  left: var(--arrow-left);
   transform: translateX(-50%);
   width: 0;
   height: 0;
@@ -169,17 +298,45 @@ const isHoveringInfo = ref(false);
   z-index: 9;
 }
 
-.tooltip-bubble::after {
+.tooltip-bubble.tooltip-top::after {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
+  left: var(--arrow-left);
   transform: translateX(-50%);
   width: 0;
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   border-top: 6px solid white;
+  z-index: 10;
+}
+
+.tooltip-bubble.tooltip-bottom::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: var(--arrow-left);
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid #d1d5db;
+  z-index: 9;
+}
+
+.tooltip-bubble.tooltip-bottom::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: var(--arrow-left);
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid white;
   z-index: 10;
 }
 </style>

@@ -8,6 +8,8 @@
       v-for="(word, idx) in words || []"
       :key="word.id"
       class="relative group"
+      @mouseenter="handleMouseEnter(idx)"
+      @mouseleave="hoveredIdx = null"
     >
       <input
         v-if="word.text !== '' || (!props.translateMode && !isTranslating)"
@@ -62,6 +64,7 @@
         @blur="$emit('blur-translate')"
       />
       <SimpleTooltip
+        :ref="(el) => tooltipRefs[idx] = el"
         :text="
           word.correction ||
           (word.sentenceError
@@ -100,6 +103,7 @@
 import { watch, nextTick } from "vue";
 import SimpleTooltip from "~/components/SimpleTooltip.vue";
 import { useState } from "#app";
+import { generateRandomId } from "~/utils/misc";
 
 interface Word {
   text: string;
@@ -128,17 +132,38 @@ const emit = defineEmits<{
   space: [data: { id: string; fullText: string }];
   dot: [];
   "process-word": [data: { id: string; fullText: string }];
+  "cancel-processing": [id: string];
   "check-sentence": [];
 }>();
+const getCurrentWordPosition = () => {
+  const currentInput = inputsRefs.value[currentFocusedIdx.value];
+  if (currentInput) {
+    return currentInput.getBoundingClientRect();
+  }
+  return null;
+};
 
+const getHoveredWordPosition = () => {
+  if (hoveredIdx.value !== null) {
+    const hoveredInput = inputsRefs.value[hoveredIdx.value];
+    if (hoveredInput) {
+      return hoveredInput.getBoundingClientRect();
+    }
+  }
+  return null;
+};
 const translateInputRef = ref<HTMLInputElement>();
 
 const currentFocusedIdx = ref(0);
+
+const hoveredIdx = ref<number | null>(null);
 
 const inputsRefs = ref<HTMLInputElement[]>([]);
 const setInputRef = (idx: number, el: HTMLInputElement | null) => {
   if (el) inputsRefs.value[idx] = el;
 };
+
+const tooltipRefs = ref<any[]>([]);
 
 const lastSelection = ref<{ idx: number; start: number; end: number } | null>(
   null
@@ -191,8 +216,14 @@ const applyCorrection = (idx: number) => {
 };
 
 const saveSelection = (idx: number) => {
+  if (!words.value || !words.value[idx]) return;
+  // Cancel any ongoing processing for this word
+  emit("cancel-processing", words.value[idx].id);
   // Set status to idle on input
   words.value[idx].status = "idle";
+  // Reset correction and translation on input
+  words.value[idx].correction = null;
+  words.value[idx].translation = null;
   // Start typing timeout for processing
   if (typingTimeout.value) clearTimeout(typingTimeout.value);
   typingTimeout.value = setTimeout(() => {
@@ -216,7 +247,7 @@ const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
     // At the beginning, just add new word before
     words.value.splice(idx, 0, {
       text: "",
-      id: crypto.randomUUID(),
+      id: generateRandomId(),
       correction: null,
       translation: null,
       status: "idle",
@@ -240,7 +271,7 @@ const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
       // Only add new word if current word is not empty
       words.value.splice(idx + 1, 0, {
         text: "",
-        id: crypto.randomUUID(),
+        id: generateRandomId(),
         correction: null,
         translation: null,
         status: "idle",
@@ -262,6 +293,7 @@ const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
 };
 
 const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
+  if (!words.value || words.value.length === 0) return;
   const start = inputEl.selectionStart || 0;
   const end = inputEl.selectionEnd || 0;
   if (idx >= 0 && start === 0 && end === 0 && idx > 0) {
@@ -469,7 +501,7 @@ const handleApplySentenceCorrection = () => {
       wrongWords.length,
       ...correctionWords.map((word) => ({
         text: word,
-        id: crypto.randomUUID(),
+        id: generateRandomId(),
         correction: null,
         translation: null,
         status: "idle",
@@ -505,7 +537,7 @@ const handleBreakWord = ({
   word.sentenceError = null;
   words.value.splice(idx + 1, 0, {
     text: after,
-    id: crypto.randomUUID(),
+    id: generateRandomId(),
     correction: null,
     translation: null,
     status: "idle",
@@ -562,11 +594,18 @@ const focusOnEndById = (id: string) => {
   }
 };
 
+const handleMouseEnter = (idx: number) => {
+  hoveredIdx.value = idx;
+  tooltipRefs.value[idx]?.adjustPosition();
+};
+
 defineExpose({
   focusTranslateInput,
   focusOnEnd,
   focusOnPosition,
   focusOnEndById,
   handleKeyDown,
+  getHoveredWordPosition,
+  hoveredIdx,
 });
 </script>
