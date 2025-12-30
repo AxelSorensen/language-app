@@ -33,12 +33,11 @@ export const useDictionary = () => {
     const cleanedWord = word.replace(/[,.]/g, "").trim().toLowerCase();
 
     // Check if cleaned word already exists
-    const existingIndex = dictionary.value.findIndex(
-      (entry) => {
-        const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
-        return entry.word === cleanedWord && entryLang === language;
-      }
-    );
+    const existingIndex = dictionary.value.findIndex((entry) => {
+      const entryLang =
+        typeof entry.language === "string" ? entry.language : entry.language.id;
+      return entry.word === cleanedWord && entryLang === language;
+    });
 
     if (existingIndex !== -1) {
       // Ensure usageCount exists (for backward compatibility)
@@ -72,29 +71,28 @@ export const useDictionary = () => {
   };
 
   const removeWord = (word: string, language: string) => {
-    const index = dictionary.value.findIndex(
-      (entry) => {
-        const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
-        return entry.word === word.toLowerCase() && entryLang === language;
-      }
-    );
+    const index = dictionary.value.findIndex((entry) => {
+      const entryLang =
+        typeof entry.language === "string" ? entry.language : entry.language.id;
+      return entry.word === word.toLowerCase() && entryLang === language;
+    });
     if (index !== -1) {
       dictionary.value.splice(index, 1);
     }
   };
 
   const hasWord = (word: string, language: string) => {
-    return dictionary.value.some(
-      (entry) => {
-        const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
-        return entry.word === word.toLowerCase() && entryLang === language;
-      }
-    );
+    return dictionary.value.some((entry) => {
+      const entryLang =
+        typeof entry.language === "string" ? entry.language : entry.language.id;
+      return entry.word === word.toLowerCase() && entryLang === language;
+    });
   };
 
   const getWordsForLanguage = (language: string) => {
     return dictionary.value.filter((entry) => {
-      const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
+      const entryLang =
+        typeof entry.language === "string" ? entry.language : entry.language.id;
       return entryLang === language;
     });
   };
