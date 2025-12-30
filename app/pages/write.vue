@@ -286,8 +286,8 @@ async function translateCurrentSentence() {
       method: "POST",
       body: {
         sentence: sentence,
-        sourceLanguage: languages.value.target,
-        target: "en",
+        source: languages.value.target,
+        target: languages.value.source,
       },
     });
     currentSentenceTranslation.value = response.translation;
@@ -339,6 +339,7 @@ async function handleTab(idx: number) {
         await nextTick();
         modularInputRef.value.focusOnEndById(lastWordId);
       }
+      translateCurrentSentence();
     } else {
       translateComp.state.value.translateMode = false;
       await nextTick();
@@ -351,6 +352,7 @@ async function handleTab(idx: number) {
 }
 
 function handleProcessWord(data: { id: string; fullText: string }) {
+  translateCurrentSentence();
   if (!data.fullText.trim()) return;
   processWord(data.id, data.fullText);
 }
