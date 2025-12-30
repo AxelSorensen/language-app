@@ -1,17 +1,19 @@
 <template>
   <select
-    v-model="targetLanguage"
+    :value="targetLanguage.id"
     class="cursor-pointer px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-9"
-    @change="updateLanguages"
+    @input="updateTargetLanguage"
   >
-    <option v-for="lang in languages" :key="lang.id" :value="lang">
+    <option v-for="lang in languages" :key="lang.id" :value="lang.id">
       {{ getFlag(lang.id) }} {{ lang.name }}
     </option>
   </select>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from "vue";
+import { useSettings } from "~/composables/useSettings";
+
+const { targetLanguage } = useSettings();
 
 const languages = [
   { id: "en", name: "English" },
@@ -27,12 +29,6 @@ const languages = [
   { id: "ru", name: "Russian" },
   { id: "ar", name: "Arabic" },
 ];
-
-const targetLanguage = ref(languages[0]); // Default to Spanish
-const settingsCookie = useCookie("settings", {
-  default: () => ({ targetLanguage: languages[0] }),
-  maxAge: 60 * 60 * 24 * 365, // 1 year
-});
 
 const emit = defineEmits(["languageChange"]);
 
@@ -54,30 +50,15 @@ function getFlag(id) {
   return flags[id] || "🏳️";
 }
 
-function updateLanguages() {
-  emit("languageChange", {
-    source: "English", // Always English as source
-    target: targetLanguage.value.name,
-  });
-}
-
-// Load saved target language preference from cookie
-onMounted(() => {
-  const saved = settingsCookie.value.targetLanguage;
-  if (saved && saved.id) {
-    const found = languages.find((lang) => lang.id === saved.id);
-    if (found) {
-      targetLanguage.value = found;
-    }
+function updateTargetLanguage(event) {
+  const selectedId = event.target.value;
+  const selectedLang = languages.find((lang) => lang.id === selectedId);
+  if (selectedLang) {
+    targetLanguage.value = selectedLang;
+    emit("languageChange", {
+      source: "en", // Assuming source is English
+      target: selectedId,
+    });
   }
-  updateLanguages();
-});
-
-// Save target language preference to cookie when it changes
-watch(targetLanguage, () => {
-  settingsCookie.value = {
-    ...settingsCookie.value,
-    targetLanguage: targetLanguage.value,
-  };
-});
+}
 </script>

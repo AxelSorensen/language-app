@@ -3,7 +3,7 @@
     class="text-center text-sm w-full transition-opacity duration-300 mt-6"
     :class="isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
   >
-    <p class="text-gray-600 mb-4 w-full">Don't know what to write?</p>
+    <p class="text-gray-600 mb-4 w-full">{{ $t("dontKnowWhatToWrite") }}</p>
 
     <!-- Initial Roll the Dice CTA -->
     <button
@@ -33,7 +33,7 @@
         <circle cx="18" cy="18" r="1.5" fill="currentColor" />
         <circle cx="12" cy="12" r="1.5" fill="currentColor" />
       </svg>
-      Roll the dice
+      {{ $t("rollTheDice") }}
     </button>
 
     <!-- Topic with small dice button -->
@@ -42,7 +42,7 @@
         v-if="isGeneratingTopic"
         class="text-xl font-semibold text-gray-500 animate-pulse"
       >
-        Generating...
+        {{ $t("generating") }}
       </p>
       <p v-else class="text-xl font-semibold text-gray-800">
         {{ currentTopic }}

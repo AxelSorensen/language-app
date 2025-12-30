@@ -1,5 +1,5 @@
-import { defineEventHandler } from "h3";
-import { NATIVE_LANGUAGE, LANGUAGE_INSTRUCTIONS } from "../constants";
+import { defineEventHandler, getCookie } from "h3";
+import { getLanguageInstructions } from "../constants";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -9,8 +9,10 @@ export default defineEventHandler(async (event) => {
   const parsedSettings = settings ? JSON.parse(settings) : null;
   const targetLanguageId = parsedSettings?.targetLanguage?.id || "es";
   const targetLanguage = parsedSettings?.targetLanguage?.name || "Spanish";
+  const sourceLanguage = parsedSettings?.sourceLanguage?.name || "English";
 
-  const extraInstruction = LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
+  const extraInstruction =
+    getLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
 
   const prompt = `You are a language assistant helping ${targetLanguage} learners.
 
@@ -29,6 +31,8 @@ Do NOT flag:
 - Punctuation issues
 
 Return the wrong words and their correction. Return the exact text from the sentence that has grammatical errors and what it should be. Also provide a very brief explanation of the grammar rule violated.
+
+Provide the explanation in ${sourceLanguage}.
 
 Return:
 - type: "valid" | "correction"

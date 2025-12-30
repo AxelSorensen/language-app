@@ -8,7 +8,7 @@
             <ProgressBar :current="wordCount" :goal="wordGoal" height="h-3" />
           </div>
           <span class="text-sm text-gray-600 whitespace-nowrap"
-            >{{ wordCount }}/{{ wordGoal }} words</span
+            >{{ wordCount }}/{{ wordGoal }} {{ $t("words") }}</span
           >
         </div>
         <div class="flex justify-between items-center w-full">
@@ -16,7 +16,7 @@
             <NuxtLink
               to="/"
               class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
-              title="Back to Home"
+              title="{{ $t('backToHome') }}"
             >
               <svg
                 class="w-4 h-4 text-gray-600"
@@ -31,8 +31,9 @@
                   d="M15 19l-7-7 7-7"
                 ></path>
               </svg>
-              <span class="text-sm font-medium text-gray-700 hidden md:inline"
-                >Back</span
+              <span
+                class="text-sm font-medium text-gray-700 hidden md:inline"
+                >{{ $t("back") }}</span
               >
             </NuxtLink>
           </div>
@@ -42,7 +43,7 @@
               v-if="hasText"
               @click="clearWords"
               class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
-              title="Clear all text"
+              title="{{ $t('clearAllText') }}"
             >
               <svg
                 class="w-4 h-4 text-gray-600"
@@ -57,15 +58,16 @@
                   d="M6 18L18 6M6 6l12 12"
                 ></path>
               </svg>
-              <span class="text-sm font-medium text-gray-700 hidden md:inline"
-                >Clear</span
+              <span
+                class="text-sm font-medium text-gray-700 hidden md:inline"
+                >{{ $t("clear") }}</span
               >
             </button>
 
             <button
               @click="toggleDictionary"
               class="cursor-pointer px-3 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors flex items-center gap-2 relative"
-              title="Open vocabulary"
+              title="{{ $t('openVocabulary') }}"
             >
               <svg
                 class="w-4 h-4 text-blue-600"
@@ -80,8 +82,9 @@
                   d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                 ></path>
               </svg>
-              <span class="text-sm font-medium text-blue-700 hidden md:inline"
-                >Vocabulary</span
+              <span
+                class="text-sm font-medium text-blue-700 hidden md:inline"
+                >{{ $t("vocabulary") }}</span
               >
               <span
                 v-if="newWordsCount > 0"
@@ -95,7 +98,7 @@
               v-if="wordCount >= wordGoal"
               @click="completeEntry"
               class="cursor-pointer px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors flex items-center gap-2 font-medium"
-              title="Complete your journal entry"
+              title="{{ $t('completeYourJournalEntry') }}"
             >
               <svg
                 class="w-4 h-4"
@@ -110,7 +113,7 @@
                   d="M5 13l4 4L19 7"
                 ></path>
               </svg>
-              <span class="text-sm hidden md:inline">Complete</span>
+              <span class="text-sm hidden md:inline">{{ $t("complete") }}</span>
             </button>
           </div>
         </div>
@@ -197,6 +200,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from "vue";
+import { useCookie } from "#app";
 import ModularInput from "~/components/ModularInput.vue";
 import CustomKeyboard from "~/components/CustomKeyboard.vue";
 import BaseLayout from "~/layouts/BaseLayout.vue";
@@ -207,21 +211,22 @@ import { useWords } from "~/composables/useWords";
 import { useTranslateMode } from "~/composables/useTranslateMode";
 import { useEntries } from "~/composables/useEntries";
 import { useDictionary } from "~/composables/useDictionary";
+import { useSettings } from "~/composables/useSettings";
 
 definePageMeta({
   layout: "keyboard",
 });
 
-const languages = ref(
-  JSON.parse(
-    localStorage.getItem("journal-languages") ||
-      '{"source": "en", "target": "es"}'
-  )
-);
+const { sourceLanguage, targetLanguage } = useSettings();
+
+const languages = computed(() => ({
+  source: sourceLanguage.value.id,
+  target: targetLanguage.value.id,
+}));
 
 const modularInputRef = ref();
 
-const wordGoal = WORD_GOAL;
+const { wordGoal } = useSettings();
 
 const isDictionaryOpen = ref(false);
 
@@ -265,6 +270,7 @@ function saveEntry() {
     text: fullText.value,
     wordCount: wordCount.value,
     date: today.value,
+    words: words.value,
   };
 }
 
@@ -296,18 +302,7 @@ async function translateCurrentSentence() {
 function loadEntry() {
   const entry = entries.value[today.value];
   if (entry) {
-    // Load the text into words
-    // For simplicity, put the whole text into one word
-    words.value = [
-      {
-        text: entry.text,
-        id: "loaded",
-        correction: null,
-        translation: null,
-        status: "idle",
-        sentenceError: null,
-      },
-    ];
+    words.value = entry.words;
   }
 }
 

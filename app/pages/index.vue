@@ -2,17 +2,44 @@
   <div class="max-w-4xl mx-auto p-4">
     <div class="flex justify-between items-center mb-4">
       <LanguageSelector @languageChange="handleLanguageChange" />
-      <div
-        class="flex items-center bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-orange-700"
-      >
-        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            fill-rule="evenodd"
-            d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
-            clip-rule="evenodd"
-          ></path>
-        </svg>
-        <span class="text-sm font-semibold">{{ streak }}</span>
+      <div class="flex items-center">
+        <div
+          class="flex items-center bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-orange-700"
+        >
+          <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fill-rule="evenodd"
+              d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+          <span class="text-sm font-semibold">{{ streak }}</span>
+        </div>
+        <button
+          @click="showSettingsModal = true"
+          class="ml-2 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+          title="{{ $t('settings') }}"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -21,9 +48,11 @@
       class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
     >
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold text-blue-900">Today's Journal</h2>
+        <h2 class="text-xl font-semibold text-blue-900">
+          {{ $t("todaysJournal") }}
+        </h2>
         <div class="text-sm text-blue-600">
-          {{ todayEntry?.wordCount || 0 }}/{{ wordGoal }} words
+          {{ todayEntry?.wordCount || 0 }}/{{ wordGoal }} {{ $t("words") }}
         </div>
       </div>
       <div class="w-full overflow-hidden bg-blue-200 rounded-full h-3 mb-4">
@@ -36,8 +65,11 @@
       <p class="text-blue-800 mb-4">
         {{
           todayEntry
-            ? `You've written ${todayEntry.wordCount} words. Keep going to reach ${wordGoal}!`
-            : "You haven't started today's journal entry yet."
+            ? $t("writtenWords", {
+                count: todayEntry.wordCount,
+                goal: wordGoal,
+              })
+            : $t("notStarted")
         }}
       </p>
       <NuxtLink
@@ -57,7 +89,7 @@
             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
           ></path>
         </svg>
-        {{ todayEntry ? "Continue Writing" : "Start Today's Journal" }}
+        {{ todayEntry ? $t("continueWriting") : $t("startTodaysJournal") }}
       </NuxtLink>
     </div>
 
@@ -75,21 +107,22 @@
           ></path>
         </svg>
         <h3 class="text-xl font-semibold text-gray-900">
-          All Has Been Done for Today
+          {{ $t("allDone") }}
         </h3>
         <p class="text-gray-700 mt-2">
-          You've successfully completed your daily journal entry. Take a moment
-          to reflect on your progress!
+          {{ $t("completedEntry") }}
         </p>
       </div>
     </div>
 
     <!-- Previous Entries -->
-    <h2 class="text-lg font-medium mb-4 text-gray-900">Previous Entries</h2>
-    <div v-if="previousEntries.length > 0" class="mb-6">
+    <h2 class="text-lg font-medium mb-4 text-gray-900">
+      {{ $t("previousEntries") }}
+    </h2>
+    <div v-if="previousEntries && previousEntries.length > 0" class="mb-6">
       <div class="space-y-4">
         <div
-          v-for="entry in previousEntries"
+          v-for="entry in previousEntries || []"
           :key="entry.date"
           class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
         >
@@ -98,7 +131,9 @@
               <h3 class="text-lg font-semibold text-gray-900">
                 {{ formatDate(entry.date) }}
               </h3>
-              <p class="text-sm text-gray-500">{{ entry.wordCount }} words</p>
+              <p class="text-sm text-gray-500">
+                {{ entry.wordCount }} {{ $t("words") }}
+              </p>
             </div>
             <div class="flex items-center">
               <div
@@ -116,15 +151,15 @@
                     clip-rule="evenodd"
                   ></path>
                 </svg>
-                <span class="text-sm font-medium">Complete</span>
+                <span class="text-sm font-medium">{{ $t("complete") }}</span>
               </div>
             </div>
           </div>
           <p class="text-gray-700 leading-relaxed">
             {{
-              entry.text.length > 200
+              entry.text && entry.text.length > 200
                 ? entry.text.substring(0, 200) + "..."
-                : entry.text
+                : entry.text || ""
             }}
           </p>
         </div>
@@ -146,7 +181,7 @@
                 {{ formatDate(todayEntry.date) }}
               </h3>
               <p class="text-sm text-gray-500">
-                {{ todayEntry.wordCount }} words
+                {{ todayEntry.wordCount }} {{ $t("words") }}
               </p>
             </div>
             <div class="flex items-center">
@@ -162,15 +197,15 @@
                     clip-rule="evenodd"
                   ></path>
                 </svg>
-                <span class="text-sm font-medium">Complete</span>
+                <span class="text-sm font-medium">{{ $t("complete") }}</span>
               </div>
             </div>
           </div>
           <p class="text-gray-700 leading-relaxed">
             {{
-              todayEntry.text.length > 200
+              todayEntry.text && todayEntry.text.length > 200
                 ? todayEntry.text.substring(0, 200) + "..."
-                : todayEntry.text
+                : todayEntry.text || ""
             }}
           </p>
         </div>
@@ -190,22 +225,31 @@
           ></path>
         </svg>
         <h3 class="text-lg font-medium text-gray-900 mb-2">
-          No previous entries yet
+          {{ $t("noPreviousEntries") }}
         </h3>
         <p class="text-gray-500">
-          Start writing your first journal entry to see it here!
+          {{ $t("startFirstEntry") }}
         </p>
       </div>
     </div>
+
+    <!-- Settings Modal -->
+    <SettingsModal
+      :is-open="showSettingsModal"
+      @close="showSettingsModal = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
+import { useCookie } from "#app";
 import LanguageSelector from "~/components/LanguageSelector.vue";
 import ProgressBar from "~/components/ProgressBar.vue";
+import SettingsModal from "~/components/SettingsModal.vue";
 import { WORD_GOAL } from "~/constants";
 import { useEntries } from "~/composables/useEntries";
+import { useSettings } from "~/composables/useSettings";
 
 interface DiaryEntry {
   date: string;
@@ -215,7 +259,36 @@ interface DiaryEntry {
 
 const { entries } = useEntries();
 
-const wordGoal = WORD_GOAL;
+const { wordGoal, sourceLanguage, targetLanguage } = useSettings();
+
+const { setLocale } = useI18n();
+
+// Watch for changes to source language and update locale
+watch(sourceLanguage, (newSource) => {
+  setLocale(newSource.id === "es" ? "es" : "en");
+});
+
+const showSettingsModal = ref(false);
+
+const languageOptions = [
+  { id: "en", name: "English" },
+  { id: "es", name: "Spanish" },
+  { id: "da", name: "Danish" },
+  { id: "fr", name: "French" },
+  { id: "de", name: "German" },
+  { id: "it", name: "Italian" },
+  { id: "pt", name: "Portuguese" },
+  { id: "zh", name: "Chinese" },
+  { id: "ja", name: "Japanese" },
+  { id: "ko", name: "Korean" },
+  { id: "ru", name: "Russian" },
+  { id: "ar", name: "Arabic" },
+];
+
+const languages = computed(() => ({
+  source: sourceLanguage.value.id,
+  target: targetLanguage.value.id,
+}));
 
 const today = computed(() => {
   const now = new Date();
@@ -258,7 +331,18 @@ function formatDate(dateString: string): string {
   });
 }
 
-function handleLanguageChange(newLanguages: any) {
-  localStorage.setItem("journal-languages", JSON.stringify(newLanguages));
+function handleLanguageChange(newLanguages: {
+  source: string;
+  target: string;
+}) {
+  // Update the settings
+  sourceLanguage.value =
+    languageOptions.find((lang) => lang.id === newLanguages.source) ||
+    languageOptions[0];
+  targetLanguage.value =
+    languageOptions.find((lang) => lang.id === newLanguages.target) ||
+    languageOptions[1];
+
+  // Locale will be automatically updated by the watcher on sourceLanguage
 }
 </script>

@@ -193,7 +193,7 @@
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
-        Space
+        {{ $t("spaceKey") }}
       </KeyboardKey>
       <KeyboardKey
         key="key-dot"
@@ -221,7 +221,7 @@
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
-        Enter
+        {{ $t("enterKey") }}
       </KeyboardKey>
     </div>
   </div>

@@ -2,7 +2,7 @@ import { ref, nextTick } from "vue";
 import type { Ref } from "vue";
 import { LanguageService } from "~/services/LanguageService";
 import { generateRandomId } from "~/utils/misc";
-import type { Word } from "./useWords";
+import type { Word } from "~/types";
 
 export interface TranslateModeComposable {
   state: Ref<{

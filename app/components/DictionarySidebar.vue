@@ -8,14 +8,10 @@
       <div
         class="flex items-center justify-between p-4 border-b border-gray-200"
       >
-        <h2 class="text-lg font-semibold text-gray-800">Vocabulary</h2>
+        <h2 class="text-lg font-semibold text-gray-800">
+          {{ $t("vocabulary") }}
+        </h2>
         <div class="flex items-center gap-2">
-          <span
-            v-if="newWordsCount > 0"
-            class="bg-green-500 text-white text-xs px-2 py-1 rounded-full"
-          >
-            {{ newWordsCount }} new
-          </span>
           <span class="text-sm text-gray-500">{{ totalWords }} words</span>
           <button
             @click="closeSidebar"
@@ -57,7 +53,7 @@
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search words or translations..."
+            :placeholder="$t('searchWordsOrTranslations')"
             class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -143,7 +139,7 @@
                         ),
                       },
                     ]"
-                    title="Toggle favorite"
+                    :title="$t('toggleFavorite')"
                   >
                     <svg
                       class="w-4 h-4"
@@ -163,12 +159,8 @@
               </div>
               <div class="flex justify-between mt-4">
                 <div class="text-xs text-gray-400">
-                  Added {{ formatDate(entry.addedAt) }}
-                </div>
-                <div class="text-xs text-gray-400">
-                  Used {{ entry.usageCount }} time{{
-                    entry.usageCount !== 1 ? "s" : ""
-                  }}
+                  {{ $t("used") }} {{ entry.usageCount }}
+                  {{ entry.usageCount === 1 ? $t("time") : $t("times") }}
                 </div>
               </div>
             </div>

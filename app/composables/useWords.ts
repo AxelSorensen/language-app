@@ -1,21 +1,15 @@
-import { useState } from "#app";
+import { useState, useCookie } from "#app";
 import { ref, computed } from "vue";
 import { LanguageService } from "~/services/LanguageService";
 import { generateRandomId } from "~/utils/misc";
 import { useDictionary } from "~/composables/useDictionary";
-
-export interface Word {
-  id: string;
-  text: string;
-  correction?: string | null;
-  translation?: string | null;
-  status: "empty" | "pending" | "checked" | "error" | "idle";
-  sentenceError?: { correction: string; explanation: string } | null;
-  newlyAdded?: boolean;
-}
+import { useSettings } from "~/composables/useSettings";
+import type { Word } from "~/types";
 
 export const useWords = () => {
   const words = useState<Word[]>("words", () => []);
+
+  const { targetLanguage } = useSettings();
 
   if (words.value.length === 0) {
     words.value.push({
@@ -156,13 +150,10 @@ export const useWords = () => {
         translateResult.translation !== "unknown"
       ) {
         const { addWord } = useDictionary();
-        const settingsCookie = useCookie("settings");
-        const targetLanguage =
-          settingsCookie.value?.targetLanguage?.name || "Spanish";
         wasAddedToDictionary = addWord(
           cleanedWordText,
           translateResult.translation,
-          targetLanguage
+          targetLanguage.value.id
         );
       }
 

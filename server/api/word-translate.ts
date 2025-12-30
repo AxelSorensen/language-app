@@ -1,4 +1,4 @@
-import { NATIVE_LANGUAGE, WORD_LANGUAGE_INSTRUCTIONS } from "../constants";
+import { getWordLanguageInstructions } from "../constants";
 
 import { defineEventHandler, getCookie, readBody } from "h3";
 
@@ -11,15 +11,17 @@ export default defineEventHandler(async (event) => {
   const parsedSettings = settings ? JSON.parse(settings) : null;
   const targetLanguageId = parsedSettings?.targetLanguage?.id || "es";
   const targetLanguage = parsedSettings?.targetLanguage?.name || "Spanish";
+  const sourceLanguage = parsedSettings?.sourceLanguage?.name || "English";
 
-  const extraInstruction = WORD_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
+  const extraInstruction =
+    getWordLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
   console.log("Translating word:", word, "with context:", context);
   // Construct prompt for translation
-  const prompt = `You are a translation assistant. Translate the specified word: "${word}" from ${targetLanguage} to ${NATIVE_LANGUAGE}, considering the context: "${context}".
+  const prompt = `You are a translation assistant. Translate the specified word: "${word}" from ${targetLanguage} to ${sourceLanguage}, considering the context: "${context}".
 
 Return:
 - word: the original word
-- translation: the ${NATIVE_LANGUAGE} translation. If the word is unknown or ambiguous, set to "unknown".
+- translation: the ${sourceLanguage} translation. If the word is unknown or ambiguous, set to "unknown".
 
 IMPORTANT RULES:
 - Provide translation for known words in context.
@@ -38,7 +40,7 @@ Return a JSON object.`;
       },
       translation: {
         type: "string",
-        description: `${NATIVE_LANGUAGE} translation or "unknown"`,
+        description: `${sourceLanguage} translation or "unknown"`,
       },
     },
     required: ["word", "translation"],

@@ -17,7 +17,7 @@
         inputmode="none"
         :ref="(el) => setInputRef(idx, el as HTMLInputElement)"
         v-model="word.text"
-        :placeholder="idx === 0 && words.length === 1 ? 'Start writing...' : ''"
+        :placeholder="idx === 0 && words.length === 1 ? $t('startWriting') : ''"
         :class="[
           'mr-1 outline-none border-none field-sizing-content',
           { 'animate-pulse': word.status === 'pending' },
@@ -45,7 +45,7 @@
         autofocus
         class="outline-none border-none field-sizing-content text-2xl font-sans text-purple-500 mr-1"
         :class="[isTranslating ? 'animate-pulse' : '']"
-        placeholder="words to translate..."
+        :placeholder="$t('wordsToTranslate')"
         :value="wordsToTranslate"
         @click="
           $nextTick(() =>
@@ -241,7 +241,7 @@ const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
   if (props.translateMode) return; // Do not create new words in translate mode
 
   const word = words.value[idx];
-  if (word.text.trim() === "") return; // Prevent space in empty words
+  if (!word || word.text.trim() === "") return; // Prevent space in empty words
 
   const cursorPos = inputEl.selectionStart || 0;
   const wordLength = word.text.length;
@@ -329,7 +329,7 @@ const focusOn = (idx: number) => {
 const focusOnEnd = (idx: number) => {
   nextTick(() => {
     const inputEl = inputsRefs.value[idx];
-    if (inputEl) {
+    if (inputEl && words.value[idx]) {
       inputEl.focus();
       const len = words.value[idx].text.length;
       inputEl.setSelectionRange(len, len);
@@ -557,6 +557,7 @@ const handleBreakWord = ({
 };
 
 const handleMergeWords = (idx: number) => {
+  if (idx === 0 || !words.value[idx] || !words.value[idx - 1]) return;
   const currentText = words.value[idx].text;
   const prevLen = words.value[idx - 1].text.length;
   words.value[idx - 1].text += currentText;

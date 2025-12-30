@@ -1,4 +1,4 @@
-import { NATIVE_LANGUAGE, WORD_LANGUAGE_INSTRUCTIONS } from "../constants";
+import { getWordLanguageInstructions } from "../constants";
 
 import { defineEventHandler, getCookie, readBody } from "h3";
 
@@ -11,8 +11,10 @@ export default defineEventHandler(async (event) => {
   const parsedSettings = settings ? JSON.parse(settings) : null;
   const targetLanguageId = parsedSettings?.targetLanguage?.id || "es";
   const targetLanguage = parsedSettings?.targetLanguage?.name || "Spanish";
+  const sourceLanguage = parsedSettings?.sourceLanguage?.name || "English";
 
-  const extraInstruction = WORD_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
+  const extraInstruction =
+    getWordLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
 
   // Construct prompt for OpenAI with explicit structured output instructions
   const prompt = `You are a spelling correction assistant for ${targetLanguage}.

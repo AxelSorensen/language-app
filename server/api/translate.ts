@@ -1,6 +1,6 @@
-import { NATIVE_LANGUAGE, LANGUAGE_INSTRUCTIONS } from "../constants";
+import { getLanguageInstructions } from "../constants";
 
-import { defineEventHandler } from "h3";
+import { defineEventHandler, getCookie } from "h3";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -8,35 +8,36 @@ export default defineEventHandler(async (event) => {
   const text = body?.text || "";
   const sentence = body?.sentence || "";
   const context = body?.context || "";
-  const sourceLanguage = body?.sourceLanguage || NATIVE_LANGUAGE;
   const settings = getCookie(event, "settings");
   const parsedSettings = settings ? JSON.parse(settings) : null;
   const targetLanguageId =
     body?.target || parsedSettings?.targetLanguage?.id || "es";
   const targetLanguage =
     body?.targetName || parsedSettings?.targetLanguage?.name || "Spanish";
+  const sourceLanguage = parsedSettings?.sourceLanguage?.name || "English";
 
   // Use extra instructions if available
-  const extraInstruction = LANGUAGE_INSTRUCTIONS?.[targetLanguageId] || "";
+  const extraInstruction =
+    getLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
 
   let prompt = "";
   let input = "";
 
   if (sentence) {
     // Sentence translation (like translate_sentence_to_english)
-    prompt = `You are a language assistant. Translate the given sentence from ${sourceLanguage} to ${targetLanguageId}.
+    prompt = `You are a language assistant. Translate the given sentence from ${targetLanguage} to ${sourceLanguage}.
 
 Sentence to translate: ${sentence}
 
-Please translate the entire sentence to ${targetLanguageId}, maintaining the same level of formality and structure as the original.
+Please translate the entire sentence to ${sourceLanguage}, maintaining the same level of formality and structure as the original.
 
 Return only the translated sentence.`;
     input = `Translate sentence: ${sentence}`;
   } else {
     // Text/word translation with context (like translate_text_to_target)
-    prompt = `You are a language assistant. Translate the given ${sourceLanguage} text to ${targetLanguage}, and conjugate it appropriately for how it fits in the sentence.
+    prompt = `You are a language assistant. Translate the given ${targetLanguage} text to ${sourceLanguage}, and conjugate it appropriately for how it fits in the sentence.
 
-${sourceLanguage} text: "${text}"
+${targetLanguage} text: "${text}"
 Context sentence: "${context}"
 
 Please analyze the context sentence and determine the most appropriate conjugation/grammatical form for the translated word. Consider:

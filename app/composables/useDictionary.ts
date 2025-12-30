@@ -34,7 +34,10 @@ export const useDictionary = () => {
 
     // Check if cleaned word already exists
     const existingIndex = dictionary.value.findIndex(
-      (entry) => entry.word === cleanedWord && entry.language === language
+      (entry) => {
+        const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
+        return entry.word === cleanedWord && entryLang === language;
+      }
     );
 
     if (existingIndex !== -1) {
@@ -70,8 +73,10 @@ export const useDictionary = () => {
 
   const removeWord = (word: string, language: string) => {
     const index = dictionary.value.findIndex(
-      (entry) =>
-        entry.word === word.toLowerCase() && entry.language === language
+      (entry) => {
+        const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
+        return entry.word === word.toLowerCase() && entryLang === language;
+      }
     );
     if (index !== -1) {
       dictionary.value.splice(index, 1);
@@ -80,13 +85,18 @@ export const useDictionary = () => {
 
   const hasWord = (word: string, language: string) => {
     return dictionary.value.some(
-      (entry) =>
-        entry.word === word.toLowerCase() && entry.language === language
+      (entry) => {
+        const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
+        return entry.word === word.toLowerCase() && entryLang === language;
+      }
     );
   };
 
   const getWordsForLanguage = (language: string) => {
-    return dictionary.value.filter((entry) => entry.language === language);
+    return dictionary.value.filter((entry) => {
+      const entryLang = typeof entry.language === 'string' ? entry.language : entry.language.id;
+      return entryLang === language;
+    });
   };
 
   const clearNewWordsCount = () => {
