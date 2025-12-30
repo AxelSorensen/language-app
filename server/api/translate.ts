@@ -10,9 +10,11 @@ export default defineEventHandler(async (event) => {
   const context = body?.context || "";
   const settings = getCookie(event, "settings");
   const parsedSettings = settings ? JSON.parse(settings) : null;
-  const sourceLanguageId = body?.source || parsedSettings?.sourceLanguage?.id || "en";
-  const targetLanguageId = body?.target || parsedSettings?.targetLanguage?.id || "es";
-  
+  const sourceLanguageId =
+    body?.source || parsedSettings?.sourceLanguage?.id || "en";
+  const targetLanguageId =
+    body?.target || parsedSettings?.targetLanguage?.id || "es";
+
   // Map language IDs to names
   const languageMap: Record<string, string> = {
     en: "English",
@@ -28,9 +30,15 @@ export default defineEventHandler(async (event) => {
     ar: "Arabic",
     hi: "Hindi",
   };
-  
-  const sourceLanguage = languageMap[sourceLanguageId] || parsedSettings?.sourceLanguage?.name || "English";
-  const targetLanguage = languageMap[targetLanguageId] || parsedSettings?.targetLanguage?.name || "Spanish";
+
+  const sourceLanguage =
+    languageMap[sourceLanguageId] ||
+    parsedSettings?.sourceLanguage?.name ||
+    "English";
+  const targetLanguage =
+    languageMap[targetLanguageId] ||
+    parsedSettings?.targetLanguage?.name ||
+    "Spanish";
 
   // Use extra instructions if available
   const extraInstruction =
