@@ -78,9 +78,10 @@
             : $t("notStarted")
         }}
       </p>
-      <NuxtLink
-        to="/write"
-        class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+      <button
+        @click="startJournal"
+        :disabled="!loaded"
+        class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors shadow-sm"
       >
         <svg
           class="w-5 h-5 mr-2"
@@ -96,7 +97,7 @@
           ></path>
         </svg>
         {{ todayEntry ? $t("continueWriting") : $t("startTodaysJournal") }}
-      </NuxtLink>
+      </button>
     </div>
 
     <div v-else class="mb-6 p-6 rounded-xl">
@@ -129,36 +130,38 @@
       <div class="space-y-4">
         <div
           v-for="entry in previousEntries || []"
-          :key="entry.date"
-          class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+          :key="entry.createdAt"
+          class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
         >
-          <div class="flex items-start justify-between mb-3">
+          <div class="absolute top-4 right-4">
+            <button
+              @click="editEntry(entry)"
+              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              :title="$t('editEntry')"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <div class="flex items-start justify-between mb-3 pr-12">
             <div>
               <h3 class="text-lg font-semibold text-gray-900">
-                {{ formatDate(entry.date) }}
+                {{ formatDate(entry.createdAt) }}
               </h3>
               <p class="text-sm text-gray-500">
                 {{ entry.wordCount }} {{ $t("words") }}
               </p>
-            </div>
-            <div class="flex items-center">
-              <div
-                v-if="entry.wordCount >= wordGoal"
-                class="flex items-center text-green-600"
-              >
-                <svg
-                  class="w-4 h-4 mr-1"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clip-rule="evenodd"
-                  ></path>
-                </svg>
-                <span class="text-sm font-medium">{{ $t("complete") }}</span>
-              </div>
             </div>
           </div>
           <p class="text-gray-700 leading-relaxed">
@@ -184,7 +187,7 @@
           <div class="flex items-start justify-between mb-3">
             <div>
               <h3 class="text-lg font-semibold text-gray-900">
-                {{ formatDate(todayEntry.date) }}
+                {{ formatDate(todayEntry.createdAt) }}
               </h3>
               <p class="text-sm text-gray-500">
                 {{ todayEntry.wordCount }} {{ $t("words") }}
@@ -248,7 +251,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useCookie } from "#app";
 import LanguageSelector from "~/components/LanguageSelector.vue";
 import ProgressBar from "~/components/ProgressBar.vue";
@@ -256,18 +259,21 @@ import SettingsModal from "~/components/SettingsModal.vue";
 import { WORD_GOAL } from "~/constants";
 import { useEntries } from "~/composables/useEntries";
 import { useSettings } from "~/composables/useSettings";
+import { navigateTo } from "#app";
 
 interface DiaryEntry {
-  date: string;
+  id: string;
   text: string;
   wordCount: number;
+  createdAt: string;
+  updatedAt?: string;
 }
 
-const { entries } = useEntries();
+const { entries, getAllEntries, createJournalEntry } = useEntries();
 
 const { wordGoal, sourceLanguage, targetLanguage } = useSettings();
 
-const { setLocale } = useI18n();
+const { setLocale, locale } = useI18n();
 
 // Watch for changes to source language and update locale
 watch(sourceLanguage, (newSource) => {
@@ -275,6 +281,8 @@ watch(sourceLanguage, (newSource) => {
 });
 
 const showSettingsModal = ref(false);
+
+const loaded = ref(false);
 
 const languageOptions = [
   { id: "en", name: "English" },
@@ -301,17 +309,48 @@ const today = computed(() => {
   return now.toISOString().split("T")[0];
 });
 
-const todayEntry = computed(() => entries.value[today.value]);
+const todayEntry = computed(
+  () =>
+    entries.value.find(
+      (e) =>
+        e.createdAt &&
+        !isNaN(new Date(e.createdAt).getTime()) &&
+        new Date(e.createdAt).toISOString().split("T")[0] === today.value
+    ) || null
+);
 
 const previousEntries = computed(() => {
-  return Object.values(entries.value)
-    .filter((entry) => entry.date !== today.value)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return entries.value
+    .filter((entry) => {
+      const entryDate = entry.createdAt ? new Date(entry.createdAt).toISOString().split("T")[0] : null;
+      console.log('entry:', entry, 'entryDate:', entryDate, 'today:', today.value, 'wordCount:', entry.wordCount, 'goal:', wordGoal.value);
+      if (entryDate === today.value) {
+        return entry.wordCount >= wordGoal.value;
+      } else {
+        return entry.wordCount > 0;
+      }
+    })
+    .sort((a, b) => {
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bDate - aDate;
+    });
+});
+
+// Load all entries on mount
+onMounted(async () => {
+  entries.value = await getAllEntries();
+  loaded.value = true;
 });
 const streak = computed(() => {
-  const completedDates = Object.values(entries.value)
-    .filter((entry) => entry.wordCount >= wordGoal)
-    .map((entry) => entry.date)
+  const completedDates = entries.value
+    .filter(
+      (entry) =>
+        entry.createdAt &&
+        !isNaN(new Date(entry.createdAt).getTime()) &&
+        entry.wordCount >= wordGoal
+    )
+    .map((entry) => new Date(entry.createdAt).toISOString().split("T")[0])
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   if (completedDates.length === 0) return 0;
   let streakCount = 1;
@@ -327,14 +366,18 @@ const streak = computed(() => {
   }
   return streakCount;
 });
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
+function formatDate(date: string | undefined): string {
+  if (!date) return "No date";
+  return new Date(date).toLocaleDateString(locale.value, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+}
+
+function editEntry(entry: DiaryEntry) {
+  navigateTo(`/journal?id=${entry.id}`);
 }
 
 function handleLanguageChange(newLanguages: {
@@ -350,5 +393,20 @@ function handleLanguageChange(newLanguages: {
     languageOptions[1];
 
   // Locale will be automatically updated by the watcher on sourceLanguage
+}
+
+async function startJournal() {
+  try {
+    if (todayEntry.value) {
+      // Today's entry exists, navigate to it
+      await navigateTo(`/journal?id=${todayEntry.value.id}`);
+    } else {
+      // Create new entry
+      const randomId = crypto.randomUUID();
+      await navigateTo(`/journal?id=${randomId}`);
+    }
+  } catch (error) {
+    console.error("Error starting journal:", error);
+  }
 }
 </script>
