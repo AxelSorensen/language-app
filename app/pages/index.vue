@@ -49,10 +49,44 @@
       </div>
     </div>
 
-    <div
-      v-if="!todayEntry || todayEntry.wordCount < wordGoal"
-      class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
-    >
+    <div v-if="!loaded" class="animate-pulse">
+      <!-- Skeleton for today's journal -->
+      <div class="mb-6 p-6 bg-gray-100 border border-gray-200 rounded-xl shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div class="h-6 bg-gray-300 rounded w-48"></div>
+          <div class="h-4 bg-gray-300 rounded w-16"></div>
+        </div>
+        <div class="h-3 bg-gray-300 rounded-full mb-4"></div>
+        <div class="h-4 bg-gray-300 rounded mb-4"></div>
+        <div class="h-12 bg-gray-300 rounded-lg w-40"></div>
+      </div>
+
+      <!-- Skeleton for previous entries -->
+      <div class="h-6 bg-gray-300 rounded mb-4 w-40"></div>
+      <div class="space-y-4">
+        <div
+          v-for="i in 3"
+          :key="i"
+          class="bg-gray-100 border border-gray-200 rounded-lg p-6 shadow-sm"
+        >
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="h-5 bg-gray-300 rounded mb-1 w-32"></div>
+              <div class="h-4 bg-gray-300 rounded w-20"></div>
+            </div>
+          </div>
+          <div class="h-4 bg-gray-300 rounded mb-2"></div>
+          <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else>
+      <!-- Today's Journal -->
+      <div
+        v-if="!todayEntry || todayEntry.wordCount < wordGoal"
+        class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
+      >
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold text-blue-900">
           {{ $t("todaysJournal") }}
@@ -81,7 +115,7 @@
       <button
         @click="startJournal"
         :disabled="!loaded"
-        class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors shadow-sm"
+        class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:animate-pulse text-white font-medium rounded-lg transition-colors shadow-sm"
       >
         <svg
           class="w-5 h-5 mr-2"
@@ -261,6 +295,8 @@
       </div>
     </div>
 
+    </div>
+
     <!-- Settings Modal -->
     <SettingsModal
       :is-open="showSettingsModal"
@@ -372,13 +408,10 @@ const previousEntries = computed(() => {
 
 // Load all entries on mount
 onMounted(async () => {
-  try {
+  if (entries.value.length === 0) {
     entries.value = await getAllEntries();
-    loaded.value = true;
-  } catch (error) {
-    console.error("Failed to load entries:", error);
-    loaded.value = true; // Still enable the UI even if loading fails
   }
+  loaded.value = true;
 });
 const streak = computed(() => {
   const completedDates = entries.value
@@ -405,13 +438,21 @@ const streak = computed(() => {
   return streakCount;
 });
 function formatDate(date: string | undefined): string {
-  if (!date) return "No date";
-  return new Date(date).toLocaleDateString(locale.value, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  if (!date) return "Date not available";
+  try {
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      return "Invalid date";
+    }
+    return parsedDate.toLocaleDateString(locale.value, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (error) {
+    return "Date error";
+  }
 }
 
 function editEntry(entry: DiaryEntry) {
@@ -444,8 +485,8 @@ function handleLanguageChange(newLanguages: {
 
 async function startJournal() {
   try {
-    if (todayEntry.value) {
-      // Today's entry exists, navigate to it
+    if (todayEntry.value && todayEntry.value.id) {
+      // Today's entry exists and has an id, navigate to it
       await navigateTo(`/journal?id=${todayEntry.value.id}`);
     } else {
       // Create new entry

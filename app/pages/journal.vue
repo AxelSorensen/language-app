@@ -160,9 +160,19 @@
         @click="handleContentClick"
       >
         <div v-if="loading" class="mx-auto text-center">
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
-          ></div>
+          <svg
+            class="w-8 h-8 animate-spin mx-auto text-blue-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            ></path>
+          </svg>
           <p class="mt-2 text-gray-600">Loading journal...</p>
         </div>
         <div v-else class="mx-auto text-2xl">
@@ -338,10 +348,16 @@ async function saveEntry() {
   if (!entryId || entryId === "undefined") return;
 
   try {
+    // Get createdAt from local state, fallback to current time for new entries
+    const localEntry = entries.value.find((e) => e.id === entryId);
+    const createdAt = localEntry?.createdAt || new Date().toISOString();
+
     const entry = {
       text: fullText.value,
       wordCount: wordCount.value,
       words: words.value,
+      createdAt,
+      updatedAt: new Date().toISOString(),
     };
     // Remove undefined fields
     const cleanEntry = JSON.parse(JSON.stringify(entry));
@@ -383,7 +399,10 @@ async function loadEntry() {
   if (entryId) {
     const entry = await loadEntryFromFirestore(entryId);
     if (entry) {
-      words.value = entry.words;
+      // Only load words if the entry has them, otherwise keep initial state
+      if (entry.words && entry.words.length > 0) {
+        words.value = entry.words;
+      }
     } else {
       // Entry not found: Create new entry (words will keep initial state from useWords)
       await createJournalEntry(entryId);

@@ -56,11 +56,16 @@ export function useEntries() {
         updatedAt: new Date().toISOString(),
       });
       const index = entries.value.findIndex((e) => e.id === id);
+      const savedEntry = {
+        ...cleanEntry,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
       if (index >= 0) {
-        entries.value[index] = {
-          ...cleanEntry,
-          updatedAt: new Date().toISOString(),
-        };
+        entries.value[index] = savedEntry;
+      } else {
+        // Entry not in local state, add it
+        entries.value.push(savedEntry);
       }
     } catch (error) {
       console.error("Error saving journal entry:", error);
@@ -87,7 +92,12 @@ export function useEntries() {
 
   const getAllEntries = async (): Promise<DiaryEntry[]> => {
     try {
-      return await firebaseRepo.getAll();
+      const entries = await firebaseRepo.getAll();
+      // Ensure all entries have createdAt field
+      return entries.map(entry => ({
+        ...entry,
+        createdAt: entry.createdAt || new Date().toISOString()
+      }));
     } catch (error) {
       console.error("Error getting all journal entries:", error);
       throw error;
