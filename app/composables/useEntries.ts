@@ -94,9 +94,9 @@ export function useEntries() {
     try {
       const entries = await firebaseRepo.getAll();
       // Ensure all entries have createdAt field
-      return entries.map(entry => ({
+      return entries.map((entry) => ({
         ...entry,
-        createdAt: entry.createdAt || new Date().toISOString()
+        createdAt: entry.createdAt || new Date().toISOString(),
       }));
     } catch (error) {
       console.error("Error getting all journal entries:", error);

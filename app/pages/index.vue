@@ -51,7 +51,9 @@
 
     <div v-if="!loaded" class="animate-pulse">
       <!-- Skeleton for today's journal -->
-      <div class="mb-6 p-6 bg-gray-100 border border-gray-200 rounded-xl shadow-sm">
+      <div
+        class="mb-6 p-6 bg-gray-100 border border-gray-200 rounded-xl shadow-sm"
+      >
         <div class="flex items-center justify-between mb-4">
           <div class="h-6 bg-gray-300 rounded w-48"></div>
           <div class="h-4 bg-gray-300 rounded w-16"></div>
@@ -87,214 +89,213 @@
         v-if="!todayEntry || todayEntry.wordCount < wordGoal"
         class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
       >
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold text-blue-900">
-          {{ $t("todaysJournal") }}
-        </h2>
-        <div class="text-sm text-blue-600">
-          {{ todayEntry?.wordCount || 0 }}/{{ wordGoal }} {{ $t("words") }}
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold text-blue-900">
+            {{ $t("todaysJournal") }}
+          </h2>
+          <div class="text-sm text-blue-600">
+            {{ todayEntry?.wordCount || 0 }}/{{ wordGoal }} {{ $t("words") }}
+          </div>
         </div>
-      </div>
-      <div class="w-full overflow-hidden bg-blue-200 rounded-full h-3 mb-4">
-        <ProgressBar
-          :current="todayEntry?.wordCount || 0"
-          :goal="wordGoal"
-          height="h-3"
-        />
-      </div>
-      <p class="text-blue-800 mb-4">
-        {{
-          todayEntry
-            ? $t("writtenWords", {
-                count: todayEntry.wordCount,
-                goal: wordGoal,
-              })
-            : $t("notStarted")
-        }}
-      </p>
-      <button
-        @click="startJournal"
-        :disabled="!loaded"
-        class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:animate-pulse text-white font-medium rounded-lg transition-colors shadow-sm"
-      >
-        <svg
-          class="w-5 h-5 mr-2"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          ></path>
-        </svg>
-        {{ todayEntry ? $t("continueWriting") : $t("startTodaysJournal") }}
-      </button>
-    </div>
-
-    <div v-else class="mb-6 p-6 rounded-xl">
-      <div class="text-center">
-        <svg
-          class="w-12 h-12 text-green-600 mx-auto mb-4"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clip-rule="evenodd"
-          ></path>
-        </svg>
-        <h3 class="text-xl font-semibold text-gray-900">
-          {{ $t("allDone") }}
-        </h3>
-        <p class="text-gray-700 mt-2">
-          {{ $t("completedEntry") }}
+        <div class="w-full overflow-hidden bg-blue-200 rounded-full h-3 mb-4">
+          <ProgressBar
+            :current="todayEntry?.wordCount || 0"
+            :goal="wordGoal"
+            height="h-3"
+          />
+        </div>
+        <p class="text-blue-800 mb-4">
+          {{
+            todayEntry
+              ? $t("writtenWords", {
+                  count: todayEntry.wordCount,
+                  goal: wordGoal,
+                })
+              : $t("notStarted")
+          }}
         </p>
-      </div>
-    </div>
-
-    <!-- Previous Entries -->
-    <h2 class="text-lg font-medium mb-4 text-gray-900">
-      {{ $t("previousEntries") }}
-    </h2>
-    <div v-if="previousEntries && previousEntries.length > 0" class="mb-6">
-      <div class="space-y-4">
-        <div
-          v-for="entry in previousEntries || []"
-          :key="entry.createdAt"
-          class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
+        <button
+          @click="startJournal"
+          :disabled="!loaded"
+          class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:animate-pulse text-white font-medium rounded-lg transition-colors shadow-sm"
         >
-          <div class="absolute top-4 right-4 flex gap-2">
-            <button
-              @click="editEntry(entry)"
-              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              :title="$t('editEntry')"
-            >
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                ></path>
-              </svg>
-            </button>
-            <button
-              @click="handleDeleteEntry(entry)"
-              class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              :title="$t('deleteEntry')"
-            >
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                ></path>
-              </svg>
-            </button>
-          </div>
-          <div class="flex items-start justify-between mb-3 pr-12">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900">
-                {{ formatDate(entry.createdAt) }}
-              </h3>
-              <p class="text-sm text-gray-500">
-                {{ entry.wordCount }} {{ $t("words") }}
-              </p>
-            </div>
-          </div>
-          <p class="text-gray-700 leading-relaxed">
-            {{
-              entry.text && entry.text.length > 200
-                ? entry.text.substring(0, 200) + "..."
-                : entry.text || ""
-            }}
+          <svg
+            class="w-5 h-5 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            ></path>
+          </svg>
+          {{ todayEntry ? $t("continueWriting") : $t("startTodaysJournal") }}
+        </button>
+      </div>
+
+      <div v-else class="mb-6 p-6 rounded-xl">
+        <div class="text-center">
+          <svg
+            class="w-12 h-12 text-green-600 mx-auto mb-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+          <h3 class="text-xl font-semibold text-gray-900">
+            {{ $t("allDone") }}
+          </h3>
+          <p class="text-gray-700 mt-2">
+            {{ $t("completedEntry") }}
           </p>
         </div>
       </div>
-    </div>
 
-    <!-- No Previous Entries -->
-    <div v-else>
-      <div
-        v-if="todayEntry && todayEntry.wordCount >= wordGoal"
-        class="space-y-4"
-      >
-        <div
-          class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
-        >
-          <div class="flex items-start justify-between mb-3">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900">
-                {{ formatDate(todayEntry.createdAt) }}
-              </h3>
-              <p class="text-sm text-gray-500">
-                {{ todayEntry.wordCount }} {{ $t("words") }}
-              </p>
-            </div>
-            <div class="flex items-center">
-              <div class="flex items-center text-green-600">
+      <!-- Previous Entries -->
+      <h2 class="text-lg font-medium mb-4 text-gray-900">
+        {{ $t("previousEntries") }}
+      </h2>
+      <div v-if="previousEntries && previousEntries.length > 0" class="mb-6">
+        <div class="space-y-4">
+          <div
+            v-for="entry in previousEntries || []"
+            :key="entry.createdAt"
+            class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
+          >
+            <div class="absolute top-4 right-4 flex gap-2">
+              <button
+                @click="editEntry(entry)"
+                class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                :title="$t('editEntry')"
+              >
                 <svg
-                  class="w-4 h-4 mr-1"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
                   <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clip-rule="evenodd"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                   ></path>
                 </svg>
-                <span class="text-sm font-medium">{{ $t("complete") }}</span>
+              </button>
+              <button
+                @click="handleDeleteEntry(entry)"
+                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                :title="$t('deleteEntry')"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+            <div class="flex items-start justify-between mb-3 pr-12">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  {{ formatDate(entry.createdAt) }}
+                </h3>
+                <p class="text-sm text-gray-500">
+                  {{ entry.wordCount }} {{ $t("words") }}
+                </p>
               </div>
             </div>
+            <p class="text-gray-700 leading-relaxed">
+              {{
+                entry.text && entry.text.length > 200
+                  ? entry.text.substring(0, 200) + "..."
+                  : entry.text || ""
+              }}
+            </p>
           </div>
-          <p class="text-gray-700 leading-relaxed">
-            {{
-              todayEntry.text && todayEntry.text.length > 200
-                ? todayEntry.text.substring(0, 200) + "..."
-                : todayEntry.text || ""
-            }}
+        </div>
+      </div>
+
+      <!-- No Previous Entries -->
+      <div v-else>
+        <div
+          v-if="todayEntry && todayEntry.wordCount >= wordGoal"
+          class="space-y-4"
+        >
+          <div
+            class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  {{ formatDate(todayEntry.createdAt) }}
+                </h3>
+                <p class="text-sm text-gray-500">
+                  {{ todayEntry.wordCount }} {{ $t("words") }}
+                </p>
+              </div>
+              <div class="flex items-center">
+                <div class="flex items-center text-green-600">
+                  <svg
+                    class="w-4 h-4 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clip-rule="evenodd"
+                    ></path>
+                  </svg>
+                  <span class="text-sm font-medium">{{ $t("complete") }}</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-gray-700 leading-relaxed">
+              {{
+                todayEntry.text && todayEntry.text.length > 200
+                  ? todayEntry.text.substring(0, 200) + "..."
+                  : todayEntry.text || ""
+              }}
+            </p>
+          </div>
+        </div>
+        <div v-else class="text-center py-12">
+          <svg
+            class="w-16 h-16 text-gray-300 mx-auto mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">
+            {{ $t("noPreviousEntries") }}
+          </h3>
+          <p class="text-gray-500">
+            {{ $t("startFirstEntry") }}
           </p>
         </div>
       </div>
-      <div v-else class="text-center py-12">
-        <svg
-          class="w-16 h-16 text-gray-300 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          ></path>
-        </svg>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">
-          {{ $t("noPreviousEntries") }}
-        </h3>
-        <p class="text-gray-500">
-          {{ $t("startFirstEntry") }}
-        </p>
-      </div>
-    </div>
-
     </div>
 
     <!-- Settings Modal -->
