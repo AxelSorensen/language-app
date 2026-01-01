@@ -14,27 +14,11 @@
         <div class="flex justify-between items-center w-full">
           <div class="flex items-center gap-4">
             <button
-              @click="navigateBack"
-              :disabled="isNavigatingBack"
-              class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-100 text-gray-700 disabled:text-gray-700 rounded-lg transition-colors flex items-center gap-2"
+              @click="navigateTo('/')"
+              class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
               :title="$t('backToHome')"
             >
               <svg
-                v-if="isNavigatingBack"
-                class="w-4 h-4 animate-spin"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                ></path>
-              </svg>
-              <svg
-                v-else
                 class="w-4 h-4 text-gray-600"
                 fill="none"
                 stroke="currentColor"
@@ -49,7 +33,7 @@
               </svg>
               <span
                 class="text-sm font-medium text-gray-700 hidden md:inline"
-                >{{ isNavigatingBack ? $t("saving") : $t("back") }}</span
+                >{{ $t("back") }}</span
               >
             </button>
           </div>
@@ -113,26 +97,10 @@
             <button
               v-if="wordCount >= wordGoal"
               @click="completeEntry"
-              :disabled="isCompleting"
-              class="cursor-pointer px-4 py-2 bg-green-100 hover:bg-green-200 disabled:bg-green-100 text-green-700 disabled:text-green-700 rounded-lg transition-colors flex items-center gap-2 font-medium"
-              :title="$t('completeYourJournalEntry')"
+              class="cursor-pointer px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors flex items-center gap-2 font-medium"
+              title="{{ $t('completeYourJournalEntry') }}"
             >
               <svg
-                v-if="isCompleting"
-                class="w-4 h-4 animate-spin"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                ></path>
-              </svg>
-              <svg
-                v-else
                 class="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
@@ -145,9 +113,7 @@
                   d="M5 13l4 4L19 7"
                 ></path>
               </svg>
-              <span class="text-sm hidden md:inline">{{
-                isCompleting ? $t("completing") : $t("complete")
-              }}</span>
+              <span class="text-sm hidden md:inline">{{ $t("complete") }}</span>
             </button>
           </div>
         </div>
@@ -156,13 +122,7 @@
 
     <template #content>
       <div class="flex relative items-center p-4 h-full">
-        <div v-if="loading" class="mx-auto text-center">
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
-          ></div>
-          <p class="mt-2 text-gray-600">Loading journal...</p>
-        </div>
-        <div v-else class="mx-auto text-2xl">
+        <div class="mx-auto text-2xl">
           <ModularInput
             ref="modularInputRef"
             v-model:words="words"
@@ -274,15 +234,11 @@ const isDictionaryOpen = ref(false);
 
 const translateStartedOnEmpty = ref(false);
 
+const currentEntryId = ref<string | null>(null);
+
 const currentSentenceTranslation = ref("");
 
 const isTranslatingSentence = ref(false);
-
-const loading = ref(true);
-
-const isCompleting = ref(false);
-
-const isNavigatingBack = ref(false);
 
 const {
   words,
@@ -300,7 +256,6 @@ const {
   saveEntry: saveEntryToFirestore,
   loadEntry: loadEntryFromFirestore,
   createJournalEntry,
-  updateEntry,
 } = useEntries();
 
 const firebaseRepo = new FirestoreRepository("journal_entries");
@@ -330,19 +285,15 @@ const isProcessing = computed(
 );
 
 async function saveEntry() {
-  const route = useRoute();
-  const entryId = route.query.id as string;
-  if (!entryId || entryId === "undefined") return;
+  if (!currentEntryId.value) return;
 
   try {
-    const entry = {
+    await saveEntryToFirestore(currentEntryId.value, {
+      date: today.value,
       text: fullText.value,
       wordCount: wordCount.value,
       words: words.value,
-    };
-    // Remove undefined fields
-    const cleanEntry = JSON.parse(JSON.stringify(entry));
-    await saveEntryToFirestore(entryId, cleanEntry);
+    });
   } catch (error) {
     console.error("Failed to save entry to Firestore:", error);
   }
@@ -380,15 +331,16 @@ async function loadEntry() {
   if (entryId) {
     const entry = await loadEntryFromFirestore(entryId);
     if (entry) {
+      currentEntryId.value = entryId;
       words.value = entry.words;
     } else {
       // Entry not found: Create new entry
       await createJournalEntry(entryId);
+      currentEntryId.value = entryId;
     }
   } else {
     await navigateTo("/");
   }
-  loading.value = false;
 }
 
 onMounted(async () => {
@@ -402,19 +354,10 @@ onBeforeRouteLeave(async () => {
   await saveEntry();
 });
 
-// Update entry in state when words change
 watch(
-  words,
-  () => {
-    const route = useRoute();
-    const entryId = route.query.id as string;
-    if (entryId) {
-      updateEntry(entryId, {
-        text: fullText.value,
-        wordCount: wordCount.value,
-        words: words.value,
-      });
-    }
+  [fullText, wordCount],
+  async () => {
+    await saveEntry();
   },
   { deep: true }
 );
@@ -503,14 +446,8 @@ function closeDictionary() {
 }
 
 function completeEntry() {
-  isCompleting.value = true;
   // The entry is already saved automatically via the watch on fullText/wordCount
   // Navigate back to home page
-  navigateTo("/");
-}
-
-function navigateBack() {
-  isNavigatingBack.value = true;
   navigateTo("/");
 }
 </script>

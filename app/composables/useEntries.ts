@@ -14,10 +14,7 @@ export interface DiaryEntry {
 const firebaseRepo = new FirestoreRepository<DiaryEntry>("journal_entries");
 
 export function useEntries() {
-  const entries = useState<DiaryEntry[]>(
-    "journal-entries",
-    () => []
-  );
+  const entries = useState<DiaryEntry[]>("journal-entries", () => []);
   const createJournalEntry = async (id: string): Promise<void> => {
     try {
       const entryData: Omit<DiaryEntry, "id"> = {
@@ -44,23 +41,26 @@ export function useEntries() {
   };
 
   const updateEntry = (id: string, entry: Partial<DiaryEntry>): void => {
-    const index = entries.value.findIndex(e => e.id === id);
+    const index = entries.value.findIndex((e) => e.id === id);
     if (index >= 0) {
       entries.value[index] = { ...entries.value[index], ...entry };
     }
   };
 
   const saveEntry = async (id: string, entry: DiaryEntry): Promise<void> => {
-    if (!id || id === 'undefined') return;
+    if (!id || id === "undefined") return;
     try {
       const cleanEntry = JSON.parse(JSON.stringify(entry));
       await firebaseRepo.update(id, {
         ...cleanEntry,
         updatedAt: new Date().toISOString(),
       });
-      const index = entries.value.findIndex(e => e.id === id);
+      const index = entries.value.findIndex((e) => e.id === id);
       if (index >= 0) {
-        entries.value[index] = { ...cleanEntry, updatedAt: new Date().toISOString() };
+        entries.value[index] = {
+          ...cleanEntry,
+          updatedAt: new Date().toISOString(),
+        };
       }
     } catch (error) {
       console.error("Error saving journal entry:", error);
@@ -70,7 +70,7 @@ export function useEntries() {
 
   const loadEntry = async (id: string): Promise<DiaryEntry | null> => {
     try {
-      const existing = entries.value.find(e => e.id === id);
+      const existing = entries.value.find((e) => e.id === id);
       if (existing) {
         return existing;
       }

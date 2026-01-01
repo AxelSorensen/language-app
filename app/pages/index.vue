@@ -322,8 +322,21 @@ const todayEntry = computed(
 const previousEntries = computed(() => {
   return entries.value
     .filter((entry) => {
-      const entryDate = entry.createdAt ? new Date(entry.createdAt).toISOString().split("T")[0] : null;
-      console.log('entry:', entry, 'entryDate:', entryDate, 'today:', today.value, 'wordCount:', entry.wordCount, 'goal:', wordGoal.value);
+      const entryDate = entry.createdAt
+        ? new Date(entry.createdAt).toISOString().split("T")[0]
+        : null;
+      console.log(
+        "entry:",
+        entry,
+        "entryDate:",
+        entryDate,
+        "today:",
+        today.value,
+        "wordCount:",
+        entry.wordCount,
+        "goal:",
+        wordGoal.value
+      );
       if (entryDate === today.value) {
         return entry.wordCount >= wordGoal.value;
       } else {
