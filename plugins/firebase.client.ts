@@ -27,7 +27,10 @@ if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
     connectFirestoreEmulator(db, "localhost", 8080);
     console.log("✅ Firestore emulator connected successfully");
   } catch (error) {
-    console.warn("⚠️ Firestore emulator not available, using production Firestore:", error.message);
+    console.warn(
+      "⚠️ Firestore emulator not available, using production Firestore:",
+      error.message
+    );
     // Continue with production Firestore
   }
 }
