@@ -43,6 +43,7 @@
   "rollTheDice": "Tirar los dados",
   "generating": "Generando...",
   "completeYourJournalEntry": "Completar tu entrada de diario",
-  "spaceKey": "Espacio",
-  "enterKey": "Enter"
-}
+  "editEntry": "Editar entrada",
+  "deleteEntry": "Eliminar entrada",
+  "confirmDelete": "¿Estás seguro de que quieres eliminar esta entrada? Esta acción no se puede deshacer.",
+  "deleteError": "Error al eliminar la entrada. Por favor, inténtalo de nuevo."

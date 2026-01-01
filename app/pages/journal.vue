@@ -155,7 +155,7 @@
     </template>
 
     <template #content>
-      <div class="flex relative items-center p-4 h-full">
+      <div class="flex relative items-center p-4 h-full" @click="handleContentClick">
         <div v-if="loading" class="mx-auto text-center">
           <div
             class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
@@ -382,13 +382,19 @@ async function loadEntry() {
     if (entry) {
       words.value = entry.words;
     } else {
-      // Entry not found: Create new entry
+      // Entry not found: Create new entry (words will keep initial state from useWords)
       await createJournalEntry(entryId);
     }
   } else {
     await navigateTo("/");
   }
   loading.value = false;
+  
+  // Auto-focus the input after loading
+  await nextTick();
+  if (modularInputRef.value && words.value.length > 0) {
+    modularInputRef.value.focusOnEnd(words.value.length - 1);
+  }
 }
 
 onMounted(async () => {
@@ -500,6 +506,12 @@ function toggleDictionary() {
 
 function closeDictionary() {
   isDictionaryOpen.value = false;
+}
+
+function handleContentClick() {
+  if (modularInputRef.value && words.value.length > 0) {
+    modularInputRef.value.focusOnEnd(words.value.length - 1);
+  }
 }
 
 function completeEntry() {
