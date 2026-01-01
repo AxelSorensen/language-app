@@ -372,8 +372,13 @@ const previousEntries = computed(() => {
 
 // Load all entries on mount
 onMounted(async () => {
-  entries.value = await getAllEntries();
-  loaded.value = true;
+  try {
+    entries.value = await getAllEntries();
+    loaded.value = true;
+  } catch (error) {
+    console.error("Failed to load entries:", error);
+    loaded.value = true; // Still enable the UI even if loading fails
+  }
 });
 const streak = computed(() => {
   const completedDates = entries.value
