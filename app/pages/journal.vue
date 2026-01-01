@@ -155,7 +155,10 @@
     </template>
 
     <template #content>
-      <div class="flex relative items-center p-4 h-full" @click="handleContentClick">
+      <div
+        class="flex relative items-center p-4 h-full"
+        @click="handleContentClick"
+      >
         <div v-if="loading" class="mx-auto text-center">
           <div
             class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
@@ -389,7 +392,7 @@ async function loadEntry() {
     await navigateTo("/");
   }
   loading.value = false;
-  
+
   // Auto-focus the input after loading
   await nextTick();
   if (modularInputRef.value && words.value.length > 0) {

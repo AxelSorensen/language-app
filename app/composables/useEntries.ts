@@ -97,7 +97,7 @@ export function useEntries() {
   const deleteEntry = async (id: string): Promise<void> => {
     try {
       await firebaseRepo.delete(id);
-      const index = entries.value.findIndex(e => e.id === id);
+      const index = entries.value.findIndex((e) => e.id === id);
       if (index >= 0) {
         entries.value.splice(index, 1);
       }
