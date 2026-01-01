@@ -297,6 +297,9 @@ const isCompleting = ref(false);
 
 const isNavigatingBack = ref(false);
 
+const route = useRoute();
+const entryId = computed(() => route.query.id as string);
+
 const {
   words,
   processWord,
@@ -305,7 +308,7 @@ const {
   clearWords,
   isCheckingSentence,
   checkSentence,
-} = useWords();
+} = useWords(entryId.value);
 const translateComp = useTranslateMode();
 
 const {
@@ -399,12 +402,13 @@ async function loadEntry() {
   if (entryId) {
     const entry = await loadEntryFromFirestore(entryId);
     if (entry) {
-      // Only load words if the entry has them, otherwise keep initial state
+      // Load words if the entry has them
       if (entry.words && entry.words.length > 0) {
         words.value = entry.words;
       }
+      // If entry.words is empty, words are already cleared
     } else {
-      // Entry not found: Create new entry (words will keep initial state from useWords)
+      // Entry not found: Create new entry (words are already cleared)
       await createJournalEntry(entryId);
     }
   } else {

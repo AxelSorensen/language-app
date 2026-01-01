@@ -6,8 +6,9 @@ import { useDictionary } from "~/composables/useDictionary";
 import { useSettings } from "~/composables/useSettings";
 import type { Word } from "~/types";
 
-export const useWords = () => {
-  const words = useState<Word[]>("words", () => []);
+export const useWords = (id?: string) => {
+  const key = id ? `words-${id}` : "words";
+  const words = useState<Word[]>(key, () => []);
 
   const { targetLanguage } = useSettings();
 
