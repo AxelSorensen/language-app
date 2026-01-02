@@ -17,7 +17,13 @@
         inputmode="none"
         :ref="(el) => setInputRef(idx, el as HTMLInputElement)"
         v-model="word.text"
-        :placeholder="idx === 0 && words.length === 1 ? $t('startWriting') : ''"
+        :placeholder="
+          idx === 0 && words.length === 1
+            ? props.targetLanguage
+              ? $t('writeInLanguage', { language: props.targetLanguage.name })
+              : $t('startWriting')
+            : ''
+        "
         :class="[
           'mr-1 outline-none border-none field-sizing-content',
           { 'animate-pulse': word.status === 'pending' },
@@ -122,6 +128,7 @@ interface Props {
   isTranslating?: boolean;
   wordsToTranslate?: string;
   isCheckingSentence?: boolean;
+  targetLanguage?: { name: string; id: string };
 }
 
 const props = withDefaults(defineProps<Props>(), {});

@@ -4,6 +4,13 @@
       <div class="flex gap-4 flex-col justify-between items-center w-full">
         <!-- Progress Bar -->
         <div class="flex items-center w-full mx-4">
+          <!-- Language Indicator -->
+          <div class="px-2 py-1 flex items-center gap-2 text-gray-600 mr-4">
+            <span class="text-lg">{{ languageFlag }}</span>
+            <span class="text-sm hidden md:inline"
+              >Learning {{ targetLanguage.name }}</span
+            >
+          </div>
           <div class="flex-1 mr-4">
             <ProgressBar :current="wordCount" :goal="wordGoal" height="h-3" />
           </div>
@@ -188,6 +195,7 @@
               :isTranslating="translateComp.state.value.isTranslating"
               :wordsToTranslate="translateComp.state.value.wordsToTranslate"
               :is-checking-sentence="isCheckingSentence"
+              :targetLanguage="targetLanguage"
               @update:wordsToTranslate="
                 translateComp.state.value.wordsToTranslate = $event
               "
@@ -283,6 +291,24 @@ const languages = computed(() => ({
   source: sourceLanguage.value.id,
   target: targetLanguage.value.id,
 }));
+
+const languageFlag = computed(() => {
+  const flagMap: Record<string, string> = {
+    en: "🇺🇸",
+    es: "🇪🇸",
+    fr: "🇫🇷",
+    de: "🇩🇪",
+    it: "🇮🇹",
+    pt: "🇵🇹",
+    zh: "🇨🇳",
+    ja: "🇯🇵",
+    ko: "🇰🇷",
+    ru: "🇷🇺",
+    ar: "🇸🇦",
+    hi: "🇮🇳",
+  };
+  return flagMap[targetLanguage.value.id] || "🌍";
+});
 
 const modularInputRef = ref();
 

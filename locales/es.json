@@ -26,6 +26,7 @@
   "openVocabulary": "Abrir vocabulario",
   "completeEntryTitle": "Completar tu entrada de diario",
   "startWriting": "Empieza a escribir...",
+  "writeInLanguage": "Escribe algo en {language}...",
   "wordsToTranslate": "palabras para traducir...",
   "used": "Usado",
   "time": "vez",
