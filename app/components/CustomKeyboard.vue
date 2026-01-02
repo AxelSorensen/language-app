@@ -73,12 +73,16 @@
       >
         {{ keyboardState.isCapsLock ? key : key.toLowerCase() }}
       </KeyboardKey>
-      <button
-        class="keyboard-key flex-[1.5] min-w-0 bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
-        @click="handleBackspacePress"
+      <KeyboardKey
+        key="key-backspace"
+        keyValue="Backspace"
+        :pressed="false"
+        buttonClass="keyboard-key flex-[1.5] min-w-0 bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
+        @press="handleKeyDown"
+        @release="handleKeyUp"
       >
         ⌫
-      </button>
+      </KeyboardKey>
     </div>
 
     <!-- Fourth row: Space and Enter -->
@@ -178,27 +182,16 @@
         keyValue="."
         :pressed="false"
         buttonClass="keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
-        style="flex: 0.75 1 0%"
+        style="flex: 1 1 0%"
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
         .
       </KeyboardKey>
-      <KeyboardKey
-        key="key-question"
-        keyValue="?"
-        :pressed="false"
-        buttonClass="keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
-        style="flex: 0.75 1 0%"
-        @press="handleKeyDown"
-        @release="handleKeyUp"
-      >
-        ?
-      </KeyboardKey>
       <button
         key="key-suggest"
         class="keyboard-key w-full bg-yellow-100 text-yellow-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-yellow-300 shadow-sm"
-        style="flex: 1 1 0%"
+        style="flex: 1.2 1 0%"
         @click="handleSuggestPress"
         :disabled="props.isGeneratingSuggestion"
       >
@@ -307,7 +300,7 @@ function handleKeyDown(key) {
       deleteSpeedUpTimeout.value = setTimeout(() => {
         clearInterval(deleteInterval.value);
         deleteInterval.value = setInterval(() => {
-          if (pressedKeys.value.has("Backspace")) {
+          if (pressedKeys.has("Backspace")) {
             emit("on-key-press", key);
           }
         }, 50); // Faster speed: 50ms per deletion
@@ -390,14 +383,6 @@ function handleSuggestPress() {
     navigator.vibrate(10);
   }
   emit("on-key-press", "Suggest");
-}
-
-function handleBackspacePress() {
-  // Trigger vibration if supported
-  if ("vibrate" in navigator) {
-    navigator.vibrate(10);
-  }
-  emit("on-key-press", "Backspace");
 }
 </script>
 

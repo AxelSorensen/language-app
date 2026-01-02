@@ -45,5 +45,15 @@
   "generatingSuggestion": "Generating suggestion...",
   "completeYourJournalEntry": "Complete your journal entry",
   "spaceKey": "Space",
-  "enterKey": "Enter"
+  "enterKey": "Enter",
+  "newWordsLearned": "new words learned",
+  "vocabularyProgress": "Progress",
+  "entries": "Entries",
+  "chart": "Chart",
+  "deleteEntry": "Delete Entry",
+  "deleteConfirmationPrefix": "Are you sure you want to delete the journal entry from",
+  "deleteConfirmationSuffix": "? This action cannot be undone.",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "deleteError": "Error deleting entry"
 }

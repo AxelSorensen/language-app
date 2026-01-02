@@ -209,7 +209,10 @@
       <div class="p-4">
         <div class="mx-auto max-w-4xl text-center">
           <div class="inline-flex items-center px-4 py-2 min-h-[2.5rem]">
-            <div class="flex items-center bg-gray-100 rounded-full px-3 py-1">
+            <div
+              v-if="currentSentenceTranslation || isTranslatingSentence"
+              class="flex items-center bg-gray-100 rounded-full px-3 py-1"
+            >
               <div
                 class="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 mr-2 flex-shrink-0"
               >
@@ -296,8 +299,6 @@ const currentSentenceTranslation = ref("");
 const isTranslatingSentence = ref(false);
 
 const translationController = ref<AbortController | null>(null);
-
-const translations = ref<Record<string, string>>({});
 
 const translationTimeout = ref<NodeJS.Timeout | null>(null);
 
@@ -393,6 +394,13 @@ const wordCount = computed(
   () => fullText.value.split(" ").filter((w) => w.trim()).length
 );
 
+watch(currentSentence, (newSentence) => {
+  if (newSentence === "") {
+    currentSentenceTranslation.value = "";
+    return;
+  }
+});
+
 const isProcessing = computed(
   () =>
     isTranslatingSentence.value ||
@@ -434,12 +442,6 @@ async function translateCurrentSentence() {
     return;
   }
 
-  // Check if we already have a translation for this sentence
-  if (translations.value[sentence]) {
-    currentSentenceTranslation.value = translations.value[sentence];
-    return;
-  }
-
   // Cancel previous translation if ongoing
   if (translationController.value) {
     translationController.value.abort();
@@ -460,7 +462,6 @@ async function translateCurrentSentence() {
       signal: translationController.value.signal,
     });
     currentSentenceTranslation.value = response.translation;
-    translations.value[sentence] = response.translation;
   } catch (error) {
     if (error.name === "AbortError") {
       console.log("Translation aborted");
@@ -486,9 +487,6 @@ async function loadEntry() {
       if (entry.words && entry.words.length > 0) {
         words.value = entry.words;
       }
-      if (entry.translations) {
-        translations.value = entry.translations;
-      }
       // If entry.words is empty, words are already cleared
     } else {
       // Entry not found: Create new entry (words are already cleared)
@@ -512,10 +510,14 @@ onMounted(async () => {
 });
 
 onBeforeRouteLeave(async () => {
-  while (isProcessing.value) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  if (!isProcessing.value) {
+    saveEntry();
+  } else {
+    while (isProcessing.value) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    saveEntry();
   }
-  await saveEntry();
 });
 
 // Update entry in state when words change
@@ -529,17 +531,11 @@ watch(
         text: fullText.value,
         wordCount: wordCount.value,
         words: words.value,
-        translations: translations.value,
       });
     }
   },
   { deep: true }
 );
-
-// Watch for changes in current sentence to update translation
-watch(currentSentence, () => {
-  translateCurrentSentence();
-});
 
 function handleVirtualKeyPress(key: string) {
   modularInputRef.value?.handleKeyDown(new KeyboardEvent("keydown", { key }));
@@ -636,9 +632,7 @@ async function handleSuggest() {
         .split(" ")
         .filter((word) => word.trim() !== "");
       if (newWords.length > 0) {
-        // Capitalize the first word to start a new sentence
-        newWords[0] =
-          newWords[0].charAt(0).toUpperCase() + newWords[0].slice(1);
+        // The API now handles capitalization properly, so no need to capitalize here
         // Collect all new words first, then add them in one operation to minimize reactive updates
         const wordsToAdd = newWords.map((wordText) => ({
           id: generateRandomId(),
@@ -712,14 +706,18 @@ function closeDictionary() {
 }
 
 function completeEntry() {
-  isCompleting.value = true;
+  if (isProcessing.value) {
+    isCompleting.value = true;
+  }
   // The entry is already saved automatically via the watch on fullText/wordCount
   // Navigate back to home page
-  navigateTo("/");
+  navigateTo("/?completed=true");
 }
 
 function navigateBack() {
-  isNavigatingBack.value = true;
+  if (isProcessing.value) {
+    isNavigatingBack.value = true;
+  }
   navigateTo("/");
 }
 </script>

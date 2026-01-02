@@ -28,9 +28,9 @@
       </div>
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{
-            $t("wordGoalLabel")
-          }}</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Daily Word Goal</label
+          >
           <input
             :value="wordGoal"
             @input="wordGoal = parseInt($event.target.value) || 1"
@@ -75,14 +75,6 @@
             </option>
           </select>
         </div>
-      </div>
-      <div class="flex justify-end mt-6">
-        <button
-          @click="$emit('close')"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          {{ $t("close") }}
-        </button>
       </div>
     </div>
   </div>

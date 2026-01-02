@@ -316,6 +316,8 @@ const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
       inputEl.selectionStart = inputEl.selectionEnd = start - 1;
     }
     inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    // Focus on end after backspace
+    nextTick(() => focusOnEnd(idx));
   }
 };
 

@@ -1,4 +1,5 @@
 import { defineEventHandler, readBody, getCookie } from "h3";
+import { getLanguageInstructions, SUGGESTION_INSTRUCTIONS } from "../constants";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -30,6 +31,11 @@ export default defineEventHandler(async (event) => {
     parsedSettings?.targetLanguage?.name ||
     "Spanish";
 
+  const sourceLanguage = "English";
+  const extraInstruction =
+    getLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
+  const suggestionInstruction = SUGGESTION_INSTRUCTIONS[targetLanguageId] || "";
+
   const prompt = `You are a language assistant. Based on the current text written so far, generate a natural completion to finish the sentence in ${targetLanguage}.
 
 Current text: "${text}"
@@ -39,6 +45,8 @@ Requirements:
 - The completion should be appropriate for language learners
 - Keep the total sentence length reasonable (aim for 8-15 words total)
 - Return only the completion text that should be appended to finish the sentence
+
+${suggestionInstruction ? `- ${suggestionInstruction}` : ""}
 
 Return a JSON object with a single "completion" field containing the suggested sentence ending.`;
 
@@ -59,6 +67,8 @@ Return a JSON object with a single "completion" field containing the suggested s
     { system: prompt, user: input },
     { schema }
   );
+
+  console.log(prompt, input, result);
 
   return result;
 });

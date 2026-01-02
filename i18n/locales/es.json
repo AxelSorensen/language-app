@@ -44,5 +44,15 @@
   "generating": "Generando...",
   "completeYourJournalEntry": "Completar tu entrada de diario",
   "spaceKey": "Espacio",
-  "enterKey": "Enter"
+  "enterKey": "Enter",
+  "newWordsLearned": "nuevas palabras aprendidas",
+  "vocabularyProgress": "Progreso",
+  "entries": "Entradas",
+  "chart": "Gráfico",
+  "deleteEntry": "Eliminar Entrada",
+  "deleteConfirmationPrefix": "¿Estás seguro de que quieres eliminar la entrada de diario del",
+  "deleteConfirmationSuffix": "? Esta acción no se puede deshacer.",
+  "cancel": "Cancelar",
+  "delete": "Eliminar",
+  "deleteError": "Error al eliminar la entrada"
 }

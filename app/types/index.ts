@@ -6,4 +6,5 @@ export interface Word {
   status: "empty" | "pending" | "checked" | "error" | "idle";
   sentenceError?: { correction: string; explanation: string } | null;
   newlyAdded?: boolean;
+  firstUsed?: string;
 }

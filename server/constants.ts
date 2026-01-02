@@ -44,3 +44,7 @@ export function getWordLanguageInstructions(
     es: `If it's a verb, include the pronoun in the translation output (e.g., hablo → (I) speak, eres → (You) are).`,
   };
 }
+
+export const SUGGESTION_INSTRUCTIONS: Record<string, string> = {
+  zh: "Generate the completion in Pinyin (romanized Chinese), not in Chinese characters.",
+};

@@ -163,6 +163,9 @@ export const useWords = (id?: string) => {
             : translateResult.translation,
         status: "checked",
         newlyAdded: wasAddedToDictionary ? true : w.newlyAdded,
+        firstUsed: wasAddedToDictionary
+          ? new Date().toISOString()
+          : w.firstUsed,
       }));
 
       // If newly added, clear all other newlyAdded flags and remove this one after 1 second
@@ -181,7 +184,7 @@ export const useWords = (id?: string) => {
     } catch (error) {
       // Remove controller on error
       abortControllers.value.delete(id);
-      if (error.name === "AbortError") {
+      if ((error as Error).name === "AbortError") {
         // Reset status to idle if cancelled
         updateWord((w) => ({ ...w, status: "idle" }));
         return;

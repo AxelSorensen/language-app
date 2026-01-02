@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto p-4">
+  <div class="max-w-4xl mx-auto p-4 min-h-screen flex flex-col">
     <h1
       class="text-3xl font-bold text-center mb-6 font-['Inter'] text-gray-800"
     >
@@ -83,11 +83,11 @@
       </div>
     </div>
 
-    <div v-else>
+    <div v-else class="flex-1 flex flex-col">
       <!-- Today's Journal -->
       <div
         v-if="!todayEntry || todayEntry.wordCount < wordGoal"
-        class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
+        class="mb-6 p-6 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
       >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold text-blue-900">
@@ -136,10 +136,17 @@
         </button>
       </div>
 
-      <div v-else class="mb-6 p-6 rounded-xl">
+      <div
+        v-if="todayEntry && todayEntry.wordCount >= wordGoal"
+        class="mb-6 p-6 rounded-xl"
+      >
         <div class="text-center">
           <svg
-            class="w-12 h-12 text-green-600 mx-auto mb-4"
+            :class="[
+              'w-12 h-12 text-green-600 mx-auto mb-4 checkmark-completed',
+              justCompleted ? 'checkmark-spring' : '',
+            ]"
+            :key="justCompleted ? 'animated' : 'static'"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -158,142 +165,227 @@
         </div>
       </div>
 
-      <!-- Previous Entries -->
-      <h2 class="text-lg font-medium mb-4 text-gray-900">
-        {{ $t("previousEntries") }}
-      </h2>
-      <div v-if="previousEntries && previousEntries.length > 0" class="mb-6">
-        <div class="space-y-4">
-          <div
-            v-for="entry in previousEntries || []"
-            :key="entry.createdAt"
-            class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
-          >
-            <div class="absolute top-4 right-4 flex gap-2">
-              <button
-                @click="editEntry(entry)"
-                class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                :title="$t('editEntry')"
+      <!-- Previous Entries Section -->
+      <div class="flex-1 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-medium text-gray-900">
+            {{ showChart ? $t("vocabularyProgress") : $t("previousEntries") }}
+          </h2>
+          <div class="flex bg-gray-100 rounded-lg p-1">
+            <button
+              @click="showChart = false"
+              :class="[
+                'flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all duration-200',
+                !showChart
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900',
+              ]"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  ></path>
-                </svg>
-              </button>
-              <button
-                @click="handleDeleteEntry(entry)"
-                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                :title="$t('deleteEntry')"
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                />
+              </svg>
+              <span class="hidden sm:inline">{{ $t("entries") }}</span>
+            </button>
+            <button
+              @click="showChart = true"
+              :class="[
+                'flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all duration-200',
+                showChart
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900',
+              ]"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  ></path>
-                </svg>
-              </button>
-            </div>
-            <div class="flex items-start justify-between mb-3 pr-12">
-              <div>
-                <h3 class="text-lg font-semibold text-gray-900">
-                  {{ formatDate(entry.createdAt) }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ entry.wordCount }} {{ $t("words") }}
-                </p>
-              </div>
-            </div>
-            <p class="text-gray-700 leading-relaxed line-clamp-1">
-              {{
-                entry.text && entry.text.length > 200
-                  ? entry.text.substring(0, 200) + "..."
-                  : entry.text || ""
-              }}
-            </p>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <span class="hidden sm:inline">{{
+                $t("vocabularyProgress")
+              }}</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- No Previous Entries -->
-      <div v-else>
-        <div
-          v-if="todayEntry && todayEntry.wordCount >= wordGoal"
-          class="space-y-4"
-        >
+        <div v-if="showChart">
+          <VocabularyChart :data="chartData" />
+        </div>
+        <div v-else>
           <div
-            class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+            v-if="previousEntries && previousEntries.length > 0"
+            class="mb-6"
           >
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <h3 class="text-lg font-semibold text-gray-900">
-                  {{ formatDate(todayEntry.createdAt) }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ todayEntry.wordCount }} {{ $t("words") }}
+            <div class="space-y-4">
+              <div
+                v-for="entry in previousEntries || []"
+                :key="entry.createdAt"
+                class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
+              >
+                <div class="absolute top-4 right-4 flex gap-2">
+                  <button
+                    @click="editEntry(entry)"
+                    class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                    :title="$t('editEntry')"
+                  >
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      ></path>
+                    </svg>
+                  </button>
+                  <button
+                    @click="handleDeleteEntry(entry)"
+                    class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                    :title="$t('deleteEntry')"
+                  >
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="flex items-start justify-between mb-3 pr-12">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                      {{ formatDate(entry.createdAt) }}
+                    </h3>
+                    <p class="text-sm text-gray-500">
+                      {{ entry.wordCount }} {{ $t("words") }} •
+                      {{
+                        entry.words?.filter(
+                          (w) =>
+                            w.firstUsed &&
+                            w.firstUsed.substring(0, 10) ===
+                              entry.createdAt?.substring(0, 10)
+                        ).length || 0
+                      }}
+                      {{ $t("newWordsLearned") }}
+                    </p>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed line-clamp-1">
+                  {{
+                    entry.text && entry.text.length > 200
+                      ? entry.text.substring(0, 200) + "..."
+                      : entry.text || ""
+                  }}
                 </p>
               </div>
-              <div class="flex items-center">
-                <div class="flex items-center text-green-600">
-                  <svg
-                    class="w-4 h-4 mr-1"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clip-rule="evenodd"
-                    ></path>
-                  </svg>
-                  <span class="text-sm font-medium">{{ $t("complete") }}</span>
+            </div>
+          </div>
+
+          <!-- No Previous Entries -->
+          <div v-else class="flex-1 flex items-center justify-center">
+            <div
+              v-if="todayEntry && todayEntry.wordCount >= wordGoal"
+              class="space-y-4 w-full"
+            >
+              <div
+                class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                      {{ formatDate(todayEntry.createdAt) }}
+                    </h3>
+                    <p class="text-sm text-gray-500">
+                      {{ todayEntry!.wordCount }} {{ $t("words") }} •
+                      {{
+                        todayEntry!.words?.filter(
+                          (w) =>
+                            w.firstUsed &&
+                            w.firstUsed.substring(0, 10) ===
+                              todayEntry!.createdAt?.substring(0, 10)
+                        ).length || 0
+                      }}
+                      {{ $t("newWordsLearned") }}
+                    </p>
+                  </div>
+                  <div class="flex items-center">
+                    <div class="flex items-center text-green-600">
+                      <svg
+                        class="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        ></path>
+                      </svg>
+                      <span class="text-sm font-medium">{{
+                        $t("complete")
+                      }}</span>
+                    </div>
+                  </div>
                 </div>
+                <p class="text-gray-700 leading-relaxed line-clamp-1">
+                  {{
+                    todayEntry.text && todayEntry.text.length > 200
+                      ? todayEntry.text.substring(0, 200) + "..."
+                      : todayEntry.text || ""
+                  }}
+                </p>
               </div>
             </div>
-            <p class="text-gray-700 leading-relaxed line-clamp-1">
-              {{
-                todayEntry.text && todayEntry.text.length > 200
-                  ? todayEntry.text.substring(0, 200) + "..."
-                  : todayEntry.text || ""
-              }}
-            </p>
+            <div v-else class="text-center w-full">
+              <svg
+                class="w-16 h-16 text-gray-300 mx-auto mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+              <h3 class="text-lg font-medium text-gray-900 mb-2">
+                {{ $t("noPreviousEntries") }}
+              </h3>
+              <p class="text-gray-500">
+                {{ $t("startFirstEntry") }}
+              </p>
+            </div>
           </div>
-        </div>
-        <div v-else class="text-center py-12">
-          <svg
-            class="w-16 h-16 text-gray-300 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            ></path>
-          </svg>
-          <h3 class="text-lg font-medium text-gray-900 mb-2">
-            {{ $t("noPreviousEntries") }}
-          </h3>
-          <p class="text-gray-500">
-            {{ $t("startFirstEntry") }}
-          </p>
         </div>
       </div>
     </div>
@@ -303,6 +395,56 @@
       :is-open="showSettingsModal"
       @close="showSettingsModal = false"
     />
+
+    <!-- Delete Confirmation Modal -->
+    <div
+      v-if="showDeleteModal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      @click="cancelDelete"
+    >
+      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" @click.stop>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">{{ $t("deleteEntry") }}</h3>
+          <button
+            @click="cancelDelete"
+            class="text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <p class="text-gray-700 mb-6">
+          {{ $t("deleteConfirmationPrefix") }}
+          <strong>{{ formatDate(entryToDelete.createdAt) }}</strong
+          >{{ $t("deleteConfirmationSuffix") }}
+        </p>
+        <div class="flex justify-end space-x-3">
+          <button
+            @click="cancelDelete"
+            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            {{ $t("cancel") }}
+          </button>
+          <button
+            @click="confirmDelete"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+          >
+            {{ $t("delete") }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -315,16 +457,10 @@ import SettingsModal from "~/components/SettingsModal.vue";
 import { WORD_GOAL } from "~/constants";
 import { useEntries } from "~/composables/useEntries";
 import { useSettings } from "~/composables/useSettings";
-import { navigateTo } from "#app";
-
-interface DiaryEntry {
-  id: string;
-  text: string;
-  wordCount: number;
-  language?: string;
-  createdAt: string;
-  updatedAt?: string;
-}
+import { navigateTo, useRoute } from "#app";
+import type { Word } from "~/types";
+import type { DiaryEntry } from "~/composables/useEntries";
+import VocabularyChart from "~/components/VocabularyChart.vue";
 
 const { wordGoal, sourceLanguage, targetLanguage } = useSettings();
 
@@ -339,6 +475,16 @@ watch(sourceLanguage, (newSource) => {
 });
 
 const showSettingsModal = ref(false);
+
+const showChart = ref(false);
+
+const route = useRoute();
+
+const justCompleted = ref(false);
+
+const showDeleteModal = ref(false);
+
+const entryToDelete = ref<DiaryEntry | null>(null);
 
 const languageOptions = [
   { id: "en", name: "English" },
@@ -393,12 +539,14 @@ const todayEntry = computed(
     ) || null
 );
 
+// Watch for journal completion to trigger vibration
+
 const previousEntries = computed(() => {
   return entries.value
     .filter((entry) => {
       const entryDate = entry.createdAt
         ? (() => {
-            const createdDate = new Date(entry.createdAt);
+            const createdDate = new Date(entry.createdAt!);
             const year = createdDate.getFullYear();
             const month = String(createdDate.getMonth() + 1).padStart(2, "0");
             const day = String(createdDate.getDate()).padStart(2, "0");
@@ -412,8 +560,8 @@ const previousEntries = computed(() => {
       }
     })
     .sort((a, b) => {
-      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const aDate = a.createdAt ? new Date(a.createdAt!).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt!).getTime() : 0;
       return bDate - aDate;
     });
 });
@@ -423,6 +571,40 @@ onMounted(async () => {
   if (entries.value.length === 0) {
     await getAllEntries();
   }
+  if (route.query.completed === "true") {
+    justCompleted.value = true;
+    // Clear the query param
+    await navigateTo("/", { replace: true });
+  }
+});
+const chartData = computed(() => {
+  const wordMap = new Map<string, number>();
+  entries.value.forEach((entry) => {
+    entry.words?.forEach((word) => {
+      if (word.firstUsed) {
+        const date = word.firstUsed.substring(0, 10); // YYYY-MM-DD
+        wordMap.set(date, (wordMap.get(date) || 0) + 1);
+      }
+    });
+  });
+  const sortedData = Array.from(wordMap.entries())
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Make it cumulative
+  let cumulative = 0;
+  const cumulativeData = sortedData.map((item) => {
+    cumulative += item.count;
+    return {
+      date: new Date(item.date).toLocaleDateString(locale.value, {
+        month: "short",
+        day: "numeric",
+      }),
+      count: cumulative,
+    };
+  });
+
+  return cumulativeData;
 });
 const streak = computed(() => {
   const completedDates = entries.value
@@ -433,7 +615,7 @@ const streak = computed(() => {
         entry.wordCount >= wordGoal.value
     )
     .map((entry) => {
-      const createdDate = new Date(entry.createdAt);
+      const createdDate = new Date(entry.createdAt!);
       const year = createdDate.getFullYear();
       const month = String(createdDate.getMonth() + 1).padStart(2, "0");
       const day = String(createdDate.getDate()).padStart(2, "0");
@@ -488,16 +670,30 @@ function formatDate(date: string | undefined): string {
 }
 
 function editEntry(entry: DiaryEntry) {
-  navigateTo(`/journal?id=${entry.id}`);
+  navigateTo(`/journal?id=${entry.id!}`);
 }
 
 async function handleDeleteEntry(entry: DiaryEntry) {
+  entryToDelete.value = entry;
+  showDeleteModal.value = true;
+}
+
+async function confirmDelete() {
+  if (!entryToDelete.value) return;
+  const entry = entryToDelete.value;
+  showDeleteModal.value = false;
+  entryToDelete.value = null;
   try {
-    await deleteEntry(entry.id);
+    await deleteEntry(entry.id!);
   } catch (error) {
     console.error("Error deleting entry:", error);
     alert($t("deleteError"));
   }
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false;
+  entryToDelete.value = null;
 }
 
 function handleLanguageChange(newLanguages: {
@@ -505,12 +701,12 @@ function handleLanguageChange(newLanguages: {
   target: string;
 }) {
   // Update the settings
-  sourceLanguage.value =
-    languageOptions.find((lang) => lang.id === newLanguages.source) ||
-    languageOptions[0];
-  targetLanguage.value =
-    languageOptions.find((lang) => lang.id === newLanguages.target) ||
-    languageOptions[1];
+  sourceLanguage.value = (languageOptions.find(
+    (lang) => lang.id === newLanguages.source
+  ) ?? languageOptions[0])!;
+  targetLanguage.value = (languageOptions.find(
+    (lang) => lang.id === newLanguages.target
+  ) ?? languageOptions[1])!;
 
   // Locale will be automatically updated by the watcher on sourceLanguage
 }
@@ -530,3 +726,25 @@ async function startJournal() {
   }
 }
 </script>
+
+<style>
+.checkmark-completed {
+  transform: scale(1.2);
+}
+
+.checkmark-spring {
+  animation: grow-scale 0.8s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+@keyframes grow-scale {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1.2);
+  }
+}
+</style>
