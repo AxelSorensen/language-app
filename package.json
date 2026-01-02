@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@nuxt/icon": "2.1.0",
+    "@nuxtjs/i18n": "10.2.1",
     "@tailwindcss/vite": "^4.1.16",
     "@vueuse/core": "^14.0.0",
+    "firebase": "^12.7.0",
     "nuxt": "^4.2.0",
     "openai": "^6.8.0",
     "simple-keyboard": "^3.8.89",

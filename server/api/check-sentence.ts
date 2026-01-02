@@ -1,4 +1,5 @@
-import { NATIVE_LANGUAGE, LANGUAGE_INSTRUCTIONS } from "../constants";
+import { defineEventHandler, getCookie } from "h3";
+import { getLanguageInstructions } from "../constants";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -8,8 +9,10 @@ export default defineEventHandler(async (event) => {
   const parsedSettings = settings ? JSON.parse(settings) : null;
   const targetLanguageId = parsedSettings?.targetLanguage?.id || "es";
   const targetLanguage = parsedSettings?.targetLanguage?.name || "Spanish";
+  const sourceLanguage = parsedSettings?.sourceLanguage?.name || "English";
 
-  const extraInstruction = LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
+  const extraInstruction =
+    getLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
 
   const prompt = `You are a language assistant helping ${targetLanguage} learners.
 
@@ -29,6 +32,14 @@ Do NOT flag:
 
 Return the wrong words and their correction. Return the exact text from the sentence that has grammatical errors and what it should be. Also provide a very brief explanation of the grammar rule violated.
 
+Provide the explanation in ${sourceLanguage}.
+
+Return:
+- type: "valid" | "correction"
+- wrong_text: the exact wrong words if type is "correction", otherwise empty string
+- correction: what it should be if type is "correction", otherwise empty string
+- explanation: brief explanation if type is "correction", otherwise empty string
+
 Examples of GRAMMAR errors to flag:
 - "ella puedo hablar" → wrong_text: "puedo", correction: "puede", explanation: "Subject-verb agreement error"
 - "ella puedo hablo" → wrong_text: "puedo hablo", correction: "puede hablar", explanation: "Incorrect verb forms"
@@ -47,6 +58,12 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
   const schema = {
     type: "object",
     properties: {
+      type: {
+        type: "string",
+        enum: ["valid", "correction"],
+        description:
+          "Whether there are grammar errors: valid (no errors), correction (grammar fix needed)",
+      },
       wrong_text: {
         type: "string",
         description:
@@ -63,7 +80,7 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
           "A very brief explanation of why this correction is needed, or empty string if no errors",
       },
     },
-    required: ["wrong_text", "correction", "explanation"],
+    required: ["type", "wrong_text", "correction", "explanation"],
     additionalProperties: false,
   };
 
@@ -72,6 +89,5 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
     { schema }
   );
 
-  console.log("Sentence check result:", result);
   return result;
 });

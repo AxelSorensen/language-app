@@ -1,5 +1,11 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
 @import "tailwindcss";
 
 ::spelling-error {
   text-decoration: wavy red underline;
+}
+
+.custom-container {
+  max-width: 600px;
+  width: 100%;
 }

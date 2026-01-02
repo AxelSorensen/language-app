@@ -1,3 +1,5 @@
+import { defineEventHandler } from "h3";
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;
@@ -44,8 +46,6 @@ Return a JSON object with an array of 3 sentences.`;
     { system: prompt, user: input },
     { schema }
   );
-
-  console.log("Sentences generation result:", result);
 
   return { result };
 });

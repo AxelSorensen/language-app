@@ -1,3 +1,5 @@
+import { defineEventHandler } from "h3";
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const llm_service = event.context.llm_service;
@@ -32,8 +34,6 @@ If the word cannot be conjugated to this tense, return the original word.`;
     { system: prompt, user: input },
     { schema }
   );
-
-  console.log("Conjugation result:", result);
 
   return { result };
 });

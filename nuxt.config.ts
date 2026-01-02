@@ -17,6 +17,8 @@ export default defineNuxtConfig({
     host: "0.0.0.0",
   },
 
+  ssr: false,
+
   devtools: { enabled: false },
   css: ["./app/assets/css/main.css"],
 
@@ -24,5 +26,17 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
-  modules: ["@nuxt/icon"],
+  modules: ["@nuxt/icon", "@nuxtjs/i18n"],
+  i18n: {
+    locales: [
+      { code: "en", name: "English", file: "en.json" },
+      { code: "es", name: "Spanish", file: "es.json" },
+    ],
+    defaultLocale: "en",
+    strategy: "prefix", // 👈 important
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: "i18n_redirected",
+    },
+  },
 });
