@@ -34,7 +34,6 @@ If the word cannot be conjugated to this tense, return the original word.`;
     { system: prompt, user: input },
     { schema }
   );
-  console.log("Conjugation result:", result);
 
   return { result };
 });

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-wrap max-w-[800px]"
+    class="flex flex-wrap justify-center max-w-[800px] max-h-96 overflow-y-auto"
     :class="{ 'animate-pulse': props.isCheckingSentence }"
     @keydown.stop="handleKeyDown"
   >
@@ -21,6 +21,9 @@
         :class="[
           'mr-1 outline-none border-none field-sizing-content',
           { 'animate-pulse': word.status === 'pending' },
+          word.text === $t('generatingSuggestion')
+            ? 'text-yellow-500 animate-pulse'
+            : '',
           word.correction
             ? 'text-orange-400'
             : word.translation === 'unknown'
@@ -32,7 +35,10 @@
         ]"
         :disabled="props.translateMode"
         @input="saveSelection(idx)"
-        @focus="currentFocusedIdx = idx"
+        @focus="
+          currentFocusedIdx = idx;
+          $emit('focus-changed', idx);
+        "
       />
       <input
         v-if="
@@ -87,14 +93,10 @@
         "
         :enabled="!!(word.correction || word.sentenceError || word.translation)"
         :class="{ 'opacity-100': hoveredIdx === idx }"
-        @click="
-          word.correction
-            ? handleApplyCorrection(idx)
-            : word.sentenceError
-            ? handleApplySentenceCorrection()
-            : undefined
-        "
+        @applyCorrection="applyCorrection(idx)"
+        @applySentenceCorrection="handleApplySentenceCorrection"
         @deleteWord="handleDeleteWord(idx)"
+        @close="hoveredIdx = null"
       />
     </div>
   </div>
@@ -132,6 +134,7 @@ const emit = defineEmits<{
   tab: [previousSelection: { idx: number; start: number; end: number } | null];
   space: [data: { id: string; fullText: string }];
   dot: [];
+  suggest: [];
   "process-word": [data: { id: string; fullText: string }];
   "cancel-processing": [id: string];
   "check-sentence": [];
@@ -446,7 +449,11 @@ const handleKeyDown = (event: KeyboardEvent) => {
       handleBackspace(inputEl, currentFocusedIdx.value);
     }
   } else if (event.key === ".") {
-    emit("dot");
+    emit("sentence-end");
+  } else if (event.key === "?") {
+    emit("sentence-end");
+  } else if (event.key === "Suggest") {
+    emit("suggest");
   }
 
   // For virtual events, insert regular characters manually

@@ -89,6 +89,5 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
     { schema }
   );
 
-  console.log("Sentence check result:", result);
   return result;
 });

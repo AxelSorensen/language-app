@@ -57,7 +57,7 @@
           <div class="flex gap-2">
             <button
               v-if="hasText"
-              @click="clearWords"
+              @click="handleClearWords"
               class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
               :title="$t('clearAllText')"
             >
@@ -155,45 +155,52 @@
     </template>
 
     <template #content>
-      <div
-        class="flex relative items-center p-4 h-full"
-        @click="handleContentClick"
-      >
-        <div v-if="loading" class="mx-auto text-center">
-          <svg
-            class="w-8 h-8 animate-spin mx-auto text-blue-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            ></path>
-          </svg>
-          <p class="mt-2 text-gray-600">Loading journal...</p>
+      <div class="relative h-full p-4">
+        <div
+          v-if="loading"
+          class="absolute inset-0 flex items-center justify-center"
+        >
+          <div class="text-center">
+            <svg
+              class="w-8 h-8 animate-spin mx-auto text-blue-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              ></path>
+            </svg>
+            <p class="mt-2 text-gray-600">Loading journal...</p>
+          </div>
         </div>
-        <div v-else class="mx-auto text-2xl">
-          <ModularInput
-            ref="modularInputRef"
-            v-model:words="words"
-            :translateMode="translateComp.state.value.translateMode"
-            :isTranslating="translateComp.state.value.isTranslating"
-            :wordsToTranslate="translateComp.state.value.wordsToTranslate"
-            :is-checking-sentence="isCheckingSentence"
-            @update:wordsToTranslate="
-              translateComp.state.value.wordsToTranslate = $event
-            "
-            @process-word="handleProcessWord"
-            @cancel-processing="handleCancelProcessing"
-            @tab="handleTab"
-            @dot="handleCheckSentence"
-            @typing-timeout="handleTypingTimeout"
-            @apply-correction="handleApplyCorrection"
-            @delete-word="handleDeleteWord"
-          />
+        <div v-else class="absolute inset-0 flex items-center justify-center">
+          <div
+            class="w-full max-w-4xl text-center text-2xl max-h-96 overflow-y-auto pt-8"
+          >
+            <ModularInput
+              ref="modularInputRef"
+              v-model:words="words"
+              :translateMode="translateComp.state.value.translateMode"
+              :isTranslating="translateComp.state.value.isTranslating"
+              :wordsToTranslate="translateComp.state.value.wordsToTranslate"
+              :is-checking-sentence="isCheckingSentence"
+              @update:wordsToTranslate="
+                translateComp.state.value.wordsToTranslate = $event
+              "
+              @process-word="handleProcessWord"
+              @cancel-processing="handleCancelProcessing"
+              @tab="handleTab"
+              @sentence-end="handleCheckSentence"
+              @suggest="handleSuggest"
+              @focus-changed="currentFocusIdx = $event"
+              @typing-timeout="handleTypingTimeout"
+              @delete-word="handleDeleteWord"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -202,13 +209,7 @@
       <div class="p-4">
         <div class="mx-auto max-w-4xl text-center">
           <div class="inline-flex items-center px-4 py-2 min-h-[2.5rem]">
-            <div
-              v-if="
-                currentSentence &&
-                (currentSentenceTranslation || isTranslatingSentence)
-              "
-              class="flex items-center bg-gray-100 rounded-full px-3 py-1"
-            >
+            <div class="flex items-center bg-gray-100 rounded-full px-3 py-1">
               <div
                 class="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 mr-2 flex-shrink-0"
               >
@@ -217,7 +218,7 @@
               <span class="text-lg text-gray-700 leading-tight">
                 {{ currentSentenceTranslation }}
                 <span
-                  v-if="isTranslatingSentence"
+                  v-if="isTranslatingSentence || isGeneratingSuggestion"
                   class="inline-flex items-baseline ml-1"
                 >
                   <span
@@ -243,6 +244,7 @@
         :is-translating="translateComp.state.value.isTranslating"
         :translate-mode="translateComp.state.value.translateMode"
         :words-to-translate="translateComp.state.value.wordsToTranslate"
+        :is-generating-suggestion="isGeneratingSuggestion"
         @on-key-press="handleVirtualKeyPress"
       />
     </template>
@@ -260,7 +262,7 @@ import CustomKeyboard from "~/components/CustomKeyboard.vue";
 import BaseLayout from "~/layouts/BaseLayout.vue";
 import DictionarySidebar from "~/components/DictionarySidebar.vue";
 import ProgressBar from "~/components/ProgressBar.vue";
-import { WORD_GOAL } from "~/constants";
+import { generateRandomId } from "~/utils/misc";
 import { useWords } from "~/composables/useWords";
 import { useTranslateMode } from "~/composables/useTranslateMode";
 import { useEntries } from "~/composables/useEntries";
@@ -283,6 +285,8 @@ const modularInputRef = ref();
 
 const { wordGoal } = useSettings();
 
+const currentFocusIdx = ref(-1);
+
 const isDictionaryOpen = ref(false);
 
 const translateStartedOnEmpty = ref(false);
@@ -290,6 +294,14 @@ const translateStartedOnEmpty = ref(false);
 const currentSentenceTranslation = ref("");
 
 const isTranslatingSentence = ref(false);
+
+const translationController = ref<AbortController | null>(null);
+
+const translations = ref<Record<string, string>>({});
+
+const translationTimeout = ref<NodeJS.Timeout | null>(null);
+
+const isGeneratingSuggestion = ref(false);
 
 const loading = ref(true);
 
@@ -324,15 +336,59 @@ const { newWordsCount, clearNewWordsCount } = useDictionary();
 
 const today = computed(() => {
   const route = useRoute();
-  return (route.query.date as string) || new Date().toISOString().split("T")[0];
+  if (route.query.date) {
+    return route.query.date as string;
+  }
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 });
 
 const fullText = computed(() => words.value.map((w) => w.text).join(" "));
 const currentSentence = computed(() => {
-  const text = fullText.value;
-  const sentences = text.split(".");
-  return sentences[sentences.length - 1].trim();
+  const wordList = words.value;
+  if (wordList.length === 0) return "";
+  const idx =
+    currentFocusIdx.value >= 0 ? currentFocusIdx.value : wordList.length - 1;
+  if (idx < 0) return "";
+  // Find the sentence containing the focused word
+  let start = idx;
+  // Go back to find the start of the sentence (after a dot or question mark)
+  while (
+    start > 0 &&
+    wordList[start - 1] &&
+    !wordList[start - 1].text.endsWith(".") &&
+    !wordList[start - 1].text.endsWith("?")
+  ) {
+    start--;
+  }
+  let end = idx;
+  // Go forward to find the end of the sentence (before a dot or question mark, but include up to the dot/question mark)
+  while (
+    end < wordList.length - 1 &&
+    wordList[end] &&
+    !wordList[end].text.endsWith(".") &&
+    !wordList[end].text.endsWith("?")
+  ) {
+    end++;
+  }
+  // Include the dot or question mark if present
+  if (
+    end < wordList.length - 1 &&
+    wordList[end + 1] &&
+    (wordList[end + 1].text === "." || wordList[end + 1].text === "?")
+  ) {
+    end++;
+  }
+  const sentenceWords = wordList.slice(start, end + 1);
+  return sentenceWords
+    .map((w) => w.text)
+    .join(" ")
+    .trim();
 });
+
 const wordCount = computed(
   () => fullText.value.split(" ").filter((w) => w.trim()).length
 );
@@ -359,6 +415,7 @@ async function saveEntry() {
       text: fullText.value,
       wordCount: wordCount.value,
       words: words.value,
+      language: targetLanguage.value.id,
       createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -376,6 +433,21 @@ async function translateCurrentSentence() {
     currentSentenceTranslation.value = "";
     return;
   }
+
+  // Check if we already have a translation for this sentence
+  if (translations.value[sentence]) {
+    currentSentenceTranslation.value = translations.value[sentence];
+    return;
+  }
+
+  // Cancel previous translation if ongoing
+  if (translationController.value) {
+    translationController.value.abort();
+  }
+
+  // Create new controller for this request
+  translationController.value = new AbortController();
+
   isTranslatingSentence.value = true;
   try {
     const response = await $fetch("/api/translate", {
@@ -385,13 +457,21 @@ async function translateCurrentSentence() {
         source: languages.value.target,
         target: languages.value.source,
       },
+      signal: translationController.value.signal,
     });
     currentSentenceTranslation.value = response.translation;
+    translations.value[sentence] = response.translation;
   } catch (error) {
+    if (error.name === "AbortError") {
+      console.log("Translation aborted");
+      // Request was cancelled, do nothing
+      return;
+    }
     console.error("Translation error:", error);
-    currentSentenceTranslation.value = "";
+    // Keep previous translation on error
   } finally {
     isTranslatingSentence.value = false;
+    translationController.value = null;
   }
 }
 
@@ -405,6 +485,9 @@ async function loadEntry() {
       // Load words if the entry has them
       if (entry.words && entry.words.length > 0) {
         words.value = entry.words;
+      }
+      if (entry.translations) {
+        translations.value = entry.translations;
       }
       // If entry.words is empty, words are already cleared
     } else {
@@ -420,6 +503,7 @@ async function loadEntry() {
   await nextTick();
   if (modularInputRef.value && words.value.length > 0) {
     modularInputRef.value.focusOnEnd(words.value.length - 1);
+    currentFocusIdx.value = words.value.length - 1;
   }
 }
 
@@ -445,11 +529,17 @@ watch(
         text: fullText.value,
         wordCount: wordCount.value,
         words: words.value,
+        translations: translations.value,
       });
     }
   },
   { deep: true }
 );
+
+// Watch for changes in current sentence to update translation
+watch(currentSentence, () => {
+  translateCurrentSentence();
+});
 
 function handleVirtualKeyPress(key: string) {
   modularInputRef.value?.handleKeyDown(new KeyboardEvent("keydown", { key }));
@@ -485,7 +575,6 @@ async function handleTab(idx: number) {
 }
 
 function handleProcessWord(data: { id: string; fullText: string }) {
-  translateCurrentSentence();
   if (!data.fullText.trim()) return;
   processWord(data.id, data.fullText);
 }
@@ -504,6 +593,92 @@ function handleCheckSentence() {
   checkSentence();
 }
 
+async function handleSuggest() {
+  if (words.value.length === 0) return;
+
+  isGeneratingSuggestion.value = true;
+
+  // Add a temporary "generating" word
+  const tempWord = {
+    id: generateRandomId(),
+    text: $t("generatingSuggestion"),
+    status: "idle",
+    correction: null,
+    translation: null,
+  };
+  words.value.push(tempWord);
+
+  const currentText = words.value
+    .slice(0, -1)
+    .map((w) => w.text)
+    .join(" "); // Exclude the temp word
+
+  try {
+    const response = await $fetch("/api/suggest", {
+      method: "POST",
+      body: {
+        text: currentText,
+        target: languages.value.target,
+      },
+    });
+    let completion = response.completion?.trim();
+    if (completion && completion.trim()) {
+      // If the completion includes the current text, remove it
+      if (completion.startsWith(currentText)) {
+        completion = completion.substring(currentText.length).trim();
+      }
+      // Remove the temporary word
+      words.value.pop();
+
+      // Split the completion into words and add them
+      const newWords = completion
+        .trim()
+        .split(" ")
+        .filter((word) => word.trim() !== "");
+      if (newWords.length > 0) {
+        // Capitalize the first word to start a new sentence
+        newWords[0] =
+          newWords[0].charAt(0).toUpperCase() + newWords[0].slice(1);
+        // Collect all new words first, then add them in one operation to minimize reactive updates
+        const wordsToAdd = newWords.map((wordText) => ({
+          id: generateRandomId(),
+          text: wordText,
+          status: "idle", // Mark as idle so they get processed normally
+          correction: null,
+          translation: null,
+        }));
+        // Add words using splice instead of replacing the array to avoid ref issues
+        const insertIdx = words.value.length;
+        words.value.splice(insertIdx, 0, ...wordsToAdd);
+        // Focus on the last added word by ID to avoid index/ref issues
+        const lastWordId = wordsToAdd[wordsToAdd.length - 1].id;
+        modularInputRef.value?.focusOnEndById(lastWordId);
+        // Process the new words
+        const fullText = words.value.map((w) => w.text).join(" ");
+        for (
+          let i = words.value.length - wordsToAdd.length;
+          i < words.value.length;
+          i++
+        ) {
+          processWord(words.value[i].id, fullText);
+        }
+      }
+    } else {
+      // No completion, remove temp word
+      words.value.pop();
+    }
+  } catch (error) {
+    console.error("Error getting suggestion:", error);
+    // Remove temp word on error
+    words.value.pop();
+  } finally {
+    isGeneratingSuggestion.value = false;
+  }
+  // Wait for focus to update and then translate the current sentence
+  await nextTick();
+  translateCurrentSentence();
+}
+
 function handleMouseEnter(idx: number) {
   // Handle mouse enter for tooltips or other interactions
 }
@@ -512,15 +687,17 @@ function handleMouseLeave(idx: number) {
   // Handle mouse leave for tooltips or other interactions
 }
 
-function handleApplyCorrection(data: { idx: number; correction: string }) {
-  if (words.value[data.idx]) {
-    words.value[data.idx].text = data.correction;
-    words.value[data.idx].correction = null; // Clear the correction
-  }
-}
-
 function handleDeleteWord(idx: number) {
   words.value.splice(idx, 1);
+}
+
+function handleClearWords() {
+  clearWords();
+  nextTick(() => {
+    if (modularInputRef.value) {
+      modularInputRef.value.focusOnEnd(0);
+    }
+  });
 }
 
 function toggleDictionary() {
@@ -532,12 +709,6 @@ function toggleDictionary() {
 
 function closeDictionary() {
   isDictionaryOpen.value = false;
-}
-
-function handleContentClick() {
-  if (modularInputRef.value && words.value.length > 0) {
-    modularInputRef.value.focusOnEnd(words.value.length - 1);
-  }
 }
 
 function completeEntry() {

@@ -49,7 +49,7 @@
       </div>
     </div>
 
-    <div v-if="!loaded" class="animate-pulse">
+    <div v-if="loading" class="animate-pulse">
       <!-- Skeleton for today's journal -->
       <div
         class="mb-6 p-6 bg-gray-100 border border-gray-200 rounded-xl shadow-sm"
@@ -91,7 +91,7 @@
       >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold text-blue-900">
-            {{ $t("todaysJournal") }}
+            {{ $t("todaysJournal") }} - {{ todayFormatted }}
           </h2>
           <div class="text-sm text-blue-600">
             {{ todayEntry?.wordCount || 0 }}/{{ wordGoal }} {{ $t("words") }}
@@ -116,7 +116,7 @@
         </p>
         <button
           @click="startJournal"
-          :disabled="!loaded"
+          :disabled="loading"
           class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:animate-pulse text-white font-medium rounded-lg transition-colors shadow-sm"
         >
           <svg
@@ -219,7 +219,7 @@
                 </p>
               </div>
             </div>
-            <p class="text-gray-700 leading-relaxed">
+            <p class="text-gray-700 leading-relaxed line-clamp-1">
               {{
                 entry.text && entry.text.length > 200
                   ? entry.text.substring(0, 200) + "..."
@@ -265,7 +265,7 @@
                 </div>
               </div>
             </div>
-            <p class="text-gray-700 leading-relaxed">
+            <p class="text-gray-700 leading-relaxed line-clamp-1">
               {{
                 todayEntry.text && todayEntry.text.length > 200
                   ? todayEntry.text.substring(0, 200) + "..."
@@ -321,14 +321,15 @@ interface DiaryEntry {
   id: string;
   text: string;
   wordCount: number;
+  language?: string;
   createdAt: string;
   updatedAt?: string;
 }
 
-const { entries, getAllEntries, createJournalEntry, deleteEntry } =
-  useEntries();
-
 const { wordGoal, sourceLanguage, targetLanguage } = useSettings();
+
+const { entries, loading, getAllEntries, createJournalEntry, deleteEntry } =
+  useEntries();
 
 const { setLocale, locale } = useI18n();
 
@@ -338,8 +339,6 @@ watch(sourceLanguage, (newSource) => {
 });
 
 const showSettingsModal = ref(false);
-
-const loaded = ref(false);
 
 const languageOptions = [
   { id: "en", name: "English" },
@@ -363,7 +362,19 @@ const languages = computed(() => ({
 
 const today = computed(() => {
   const now = new Date();
-  return now.toISOString().split("T")[0];
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+});
+
+const todayFormatted = computed(() => {
+  const now = new Date();
+  return now.toLocaleDateString(locale.value, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 });
 
 const todayEntry = computed(
@@ -372,7 +383,13 @@ const todayEntry = computed(
       (e) =>
         e.createdAt &&
         !isNaN(new Date(e.createdAt).getTime()) &&
-        new Date(e.createdAt).toISOString().split("T")[0] === today.value
+        (() => {
+          const createdDate = new Date(e.createdAt);
+          const year = createdDate.getFullYear();
+          const month = String(createdDate.getMonth() + 1).padStart(2, "0");
+          const day = String(createdDate.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        })() === today.value
     ) || null
 );
 
@@ -380,20 +397,14 @@ const previousEntries = computed(() => {
   return entries.value
     .filter((entry) => {
       const entryDate = entry.createdAt
-        ? new Date(entry.createdAt).toISOString().split("T")[0]
+        ? (() => {
+            const createdDate = new Date(entry.createdAt);
+            const year = createdDate.getFullYear();
+            const month = String(createdDate.getMonth() + 1).padStart(2, "0");
+            const day = String(createdDate.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          })()
         : null;
-      console.log(
-        "entry:",
-        entry,
-        "entryDate:",
-        entryDate,
-        "today:",
-        today.value,
-        "wordCount:",
-        entry.wordCount,
-        "goal:",
-        wordGoal.value
-      );
       if (entryDate === today.value) {
         return entry.wordCount >= wordGoal.value;
       } else {
@@ -410,9 +421,8 @@ const previousEntries = computed(() => {
 // Load all entries on mount
 onMounted(async () => {
   if (entries.value.length === 0) {
-    entries.value = await getAllEntries();
+    await getAllEntries();
   }
-  loaded.value = true;
 });
 const streak = computed(() => {
   const completedDates = entries.value
@@ -420,22 +430,43 @@ const streak = computed(() => {
       (entry) =>
         entry.createdAt &&
         !isNaN(new Date(entry.createdAt).getTime()) &&
-        entry.wordCount >= wordGoal
+        entry.wordCount >= wordGoal.value
     )
-    .map((entry) => new Date(entry.createdAt).toISOString().split("T")[0])
+    .map((entry) => {
+      const createdDate = new Date(entry.createdAt);
+      const year = createdDate.getFullYear();
+      const month = String(createdDate.getMonth() + 1).padStart(2, "0");
+      const day = String(createdDate.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
   if (completedDates.length === 0) return 0;
+
+  // Check if today has a completed entry
+  const todayStr = today.value;
+  if (!completedDates.includes(todayStr)) return 0;
+
+  // Count consecutive days backward from today
   let streakCount = 1;
-  let currentDate = new Date(completedDates[0]);
+  let currentDate = new Date(todayStr);
+
   for (let i = 1; i < completedDates.length; i++) {
     currentDate.setDate(currentDate.getDate() - 1);
-    const expectedDate = currentDate.toISOString().split("T")[0];
-    if (completedDates[i] === expectedDate) {
+    const expectedDate = (() => {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+      const day = String(currentDate.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })();
+
+    if (completedDates.includes(expectedDate)) {
       streakCount++;
     } else {
       break;
     }
   }
+
   return streakCount;
 });
 function formatDate(date: string | undefined): string {

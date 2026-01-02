@@ -1,6 +1,6 @@
 import { getLanguageInstructions } from "../constants";
 
-import { defineEventHandler, getCookie } from "h3";
+import { defineEventHandler, getCookie, readBody } from "h3";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -64,6 +64,7 @@ Return only the translated sentence.`;
 ${sourceLanguage} text: "${text}"
 Context sentence: "${context}"
 
+
 Please analyze the context sentence and determine the most appropriate conjugation/grammatical form for the translated word. Consider:
 - Tense (past, present, future, etc.)
 - Person (first, second, third)
@@ -71,7 +72,9 @@ Please analyze the context sentence and determine the most appropriate conjugati
 - Mood (indicative, subjunctive, imperative, etc.)
 - Any grammatical agreements needed
 
-IMPORTANT: If the target language is zh (Mandarin Chinese), translate to Pinyin (romanized Chinese) instead of Chinese characters. Use proper Pinyin with tone marks.
+When translating, ensure that prepositions, particles, or grammatical markers from the source text are not duplicated if they are already implied or present in the context sentence. Return only the core translated word or phrase that fits seamlessly into the context without redundancy.
+
+${extraInstruction}
 
 Return only the properly conjugated translated text that fits naturally in the context sentence.`;
     input = `Translate: "${text}"`;

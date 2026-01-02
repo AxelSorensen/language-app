@@ -1,12 +1,14 @@
 import { ref } from "vue";
 import type { Word } from "~/types";
 import { FirestoreRepository } from "~/repositories/FirestoreRepository";
+import { useSettings } from "~/composables/useSettings";
 
 export interface DiaryEntry {
   id?: string;
   text: string;
   wordCount: number;
   words: Word[];
+  language?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -15,25 +17,21 @@ const firebaseRepo = new FirestoreRepository<DiaryEntry>("journal_entries");
 
 export function useEntries() {
   const entries = useState<DiaryEntry[]>("journal-entries", () => []);
+  const { targetLanguage: settingsTargetLanguage } = useSettings();
+  const currentTargetLanguage = computed(() => settingsTargetLanguage.value.id);
+  const loading = ref(false);
   const createJournalEntry = async (id: string): Promise<void> => {
     try {
       const entryData: Omit<DiaryEntry, "id"> = {
         text: "",
         words: [],
+        language: currentTargetLanguage.value,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      console.log(
-        "Creating journal entry with ID in Firestore:",
-        id,
-        entryData
-      );
       await firebaseRepo.setDoc(id, entryData);
       entries.value.push({ id, ...entryData });
-      console.log(
-        `✅ Created new journal entry with ID: ${id} for date: ${entryData.date}`
-      );
     } catch (error) {
       console.error("❌ Error creating journal entry with ID:", error);
       throw error;
@@ -92,33 +90,63 @@ export function useEntries() {
 
   const getAllEntries = async (): Promise<DiaryEntry[]> => {
     try {
-      const entries = await firebaseRepo.getAll();
+      loading.value = true;
+      const fetchedEntries = await firebaseRepo.query([
+        {
+          field: "language",
+          operator: "==",
+          value: currentTargetLanguage.value,
+        },
+      ]);
       // Ensure all entries have createdAt field
-      return entries.map((entry) => ({
+      const processedEntries = fetchedEntries.map((entry) => ({
         ...entry,
         createdAt: entry.createdAt || new Date().toISOString(),
       }));
+
+      // Update the reactive state
+      entries.value = processedEntries;
+
+      return processedEntries;
     } catch (error) {
       console.error("Error getting all journal entries:", error);
       throw error;
+    } finally {
+      loading.value = false;
     }
   };
 
   const deleteEntry = async (id: string): Promise<void> => {
+    // Optimistically remove from local state first
+    const index = entries.value.findIndex((e) => e.id === id);
+    let deletedEntry: DiaryEntry | null = null;
+    if (index >= 0) {
+      deletedEntry = entries.value[index];
+      entries.value.splice(index, 1);
+    }
+
     try {
       await firebaseRepo.delete(id);
-      const index = entries.value.findIndex((e) => e.id === id);
-      if (index >= 0) {
-        entries.value.splice(index, 1);
-      }
     } catch (error) {
-      console.error("Error deleting journal entry:", error);
+      console.error("Error deleting journal entry from Firebase:", error);
+      // If Firebase deletion fails, add the entry back to local state
+      if (deletedEntry) {
+        entries.value.splice(index, 0, deletedEntry);
+      }
       throw error;
     }
   };
 
+  // Watch for language changes and refetch entries
+  watch(currentTargetLanguage, async (newLanguage, oldLanguage) => {
+    if (newLanguage !== oldLanguage) {
+      await getAllEntries();
+    }
+  });
+
   return {
     entries, // Keep for backward compatibility, but will be deprecated
+    loading,
     createJournalEntry,
     saveEntry,
     loadEntry,

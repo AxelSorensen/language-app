@@ -65,12 +65,11 @@ export function useTranslateMode(): TranslateModeComposable {
       method: "POST",
       body: {
         text: filteredText,
+        context: words.value.map((w) => w.text).join(" "),
         source: languages.source,
         target: languages.target,
       },
     });
-    console.log("Translation response:", response);
-
     state.value.isTranslating = false;
 
     // Exit translate mode immediately after successful translation

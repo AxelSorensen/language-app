@@ -34,6 +34,8 @@
         ? $emit('applyCorrection')
         : type === 'unknown'
         ? $emit('deleteWord')
+        : type === 'sentence'
+        ? $emit('applySentenceCorrection')
         : null
     "
   >
@@ -154,6 +156,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from "vue";
+import { onClickOutside } from "@vueuse/core";
 
 const props = defineProps({
   text: { type: String, default: "" },
@@ -161,12 +164,25 @@ const props = defineProps({
   enabled: { type: Boolean, default: true },
   explanation: { type: String, default: "" },
 });
+
+const emit = defineEmits<{
+  applyCorrection: [];
+  deleteWord: [];
+  applySentenceCorrection: [];
+  close: [];
+}>();
 const isHoveringInfo = ref(false);
 const tooltipRef = ref<HTMLElement>();
 const tooltipStyle = ref({ left: "", top: "", transform: "", arrowLeft: "" });
 const direction = ref<"top" | "bottom">("top");
 // Change this variable to 'top' or 'bottom' to control tooltip position
-const tooltipDirection = "auto"; // 'auto', 'top', or 'bottom'
+const tooltipDirection = "top"; // 'auto', 'top', or 'bottom'
+const touchActivated = ref(false);
+const touchTimeout = ref<NodeJS.Timeout | null>(null);
+
+onClickOutside(tooltipRef, () => {
+  emit("close");
+});
 
 const adjustPosition = () => {
   nextTick(() => {
@@ -176,12 +192,6 @@ const adjustPosition = () => {
         tooltipRef.value.parentElement?.getBoundingClientRect();
       if (!parentRect) return;
 
-      console.log(
-        "Adjusting tooltip position, rect:",
-        rect,
-        "parentRect:",
-        parentRect
-      );
       const padding = 20;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
@@ -256,13 +266,11 @@ const adjustPosition = () => {
           }
         }
       }, 0);
-      console.log("Tooltip style set to:", tooltipStyle.value);
     }
   });
 };
 
 onMounted(() => {
-  console.log("Mounted tooltip with text:", props.text);
   adjustPosition();
 });
 
@@ -284,7 +292,9 @@ watch(
   }
 );
 
-defineExpose({ adjustPosition });
+defineExpose({
+  adjustPosition,
+});
 </script>
 
 <style scoped>

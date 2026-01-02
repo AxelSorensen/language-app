@@ -46,9 +46,6 @@ export const useDictionary = () => {
       }
       // Increment usage count
       dictionary.value[existingIndex].usageCount += 1;
-      console.log(
-        `Incremented usage for "${cleanedWord}" to ${dictionary.value[existingIndex].usageCount}`
-      );
       return false; // Word already existed
     } else if (cleanedWord) {
       dictionary.value.push({
@@ -64,7 +61,6 @@ export const useDictionary = () => {
       // Remove from newly added after 2 seconds
       // Increment new words count
       newWordsCount.value++;
-      console.log(`Added "${cleanedWord}" to dictionary`);
       return true; // Word was newly added
     }
     return false; // Empty word, not added

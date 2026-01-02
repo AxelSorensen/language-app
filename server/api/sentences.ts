@@ -47,7 +47,5 @@ Return a JSON object with an array of 3 sentences.`;
     { schema }
   );
 
-  console.log("Sentences generation result:", result);
-
   return { result };
 });

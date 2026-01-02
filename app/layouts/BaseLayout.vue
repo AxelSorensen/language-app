@@ -1,17 +1,17 @@
 <template>
-  <div class="min-h-dvh flex flex-col">
+  <div class="flex flex-col h-dvh overflow-hidden">
     <!-- Header Section -->
-    <header class="flex items-center p-4 shrink-0">
+    <header class="flex p-4 items-center">
       <slot name="header" />
     </header>
 
     <!-- Content Section -->
-    <main class="flex-1 flex items-center justify-center">
+    <main class="flex-1 p-4 overflow-auto">
       <slot name="content" />
     </main>
 
     <!-- Keyboard Section -->
-    <footer class="shrink-0">
+    <footer>
       <slot name="keyboard" />
     </footer>
   </div>

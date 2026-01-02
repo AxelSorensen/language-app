@@ -96,6 +96,5 @@ Return a JSON object.`;
       result.explanation = null;
     }
   }
-  console.log("Filtered result:", result);
   return result;
 });

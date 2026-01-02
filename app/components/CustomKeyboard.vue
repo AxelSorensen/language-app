@@ -7,11 +7,8 @@
         v-for="key in ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P']"
         :key="'key-' + key"
         :keyValue="keyboardState.isCapsLock ? key : key.toLowerCase()"
-        :pressed="pressedKeys.has(key)"
-        :buttonClass="[
-          'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-colors duration-75 border border-gray-300 shadow-sm',
-          pressedKeys.has(key) ? 'bg-gray-200' : '',
-        ]"
+        :pressed="false"
+        buttonClass="keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
@@ -25,11 +22,8 @@
         v-for="key in ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']"
         :key="'key-' + key"
         :keyValue="keyboardState.isCapsLock ? key : key.toLowerCase()"
-        :pressed="pressedKeys.has(key)"
-        :buttonClass="[
-          'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(key) ? 'bg-gray-200' : '',
-        ]"
+        :pressed="false"
+        buttonClass="keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
@@ -72,29 +66,19 @@
         v-for="key in ['Z', 'X', 'C', 'V', 'B', 'N', 'M']"
         :key="'key-' + key"
         :keyValue="keyboardState.isCapsLock ? key : key.toLowerCase()"
-        :pressed="pressedKeys.has(key)"
-        :buttonClass="[
-          'keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(key) ? 'bg-gray-200' : '',
-        ]"
+        :pressed="false"
+        buttonClass="keyboard-key flex-1 min-w-0 bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
         {{ keyboardState.isCapsLock ? key : key.toLowerCase() }}
       </KeyboardKey>
-      <KeyboardKey
-        key="key-backspace"
-        keyValue="Backspace"
-        :pressed="pressedKeys.has('Backspace')"
-        :buttonClass="[
-          'keyboard-key flex-[1.5] min-w-0 bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('Backspace') ? 'bg-gray-300' : '',
-        ]"
-        @press="handleKeyDown"
-        @release="handleKeyUp"
+      <button
+        class="keyboard-key flex-[1.5] min-w-0 bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
+        @click="handleBackspacePress"
       >
         ⌫
-      </KeyboardKey>
+      </button>
     </div>
 
     <!-- Fourth row: Space and Enter -->
@@ -170,11 +154,8 @@
       <KeyboardKey
         key="key-comma"
         keyValue=","
-        :pressed="pressedKeys.has(',')"
-        :buttonClass="[
-          'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(',') ? 'bg-gray-200' : '',
-        ]"
+        :pressed="false"
+        buttonClass="keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
         style="flex: 1 1 0%"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -184,11 +165,8 @@
       <KeyboardKey
         key="key-space"
         keyValue=" "
-        :pressed="pressedKeys.has(' ')"
-        :buttonClass="[
-          'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has(' ') ? 'bg-gray-200' : '',
-        ]"
+        :pressed="false"
+        buttonClass="keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
         style="flex: 5 1 0%"
         @press="handleKeyDown"
         @release="handleKeyUp"
@@ -198,31 +176,71 @@
       <KeyboardKey
         key="key-dot"
         keyValue="."
-        :pressed="pressedKeys.has('.')"
-        :buttonClass="[
-          'keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('.') ? 'bg-gray-200' : '',
-        ]"
-        style="flex: 1 1 0%"
+        :pressed="false"
+        buttonClass="keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
+        style="flex: 0.75 1 0%"
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
         .
       </KeyboardKey>
       <KeyboardKey
-        key="key-enter"
-        keyValue="Enter"
-        :pressed="pressedKeys.has('Enter')"
-        :buttonClass="[
-          'keyboard-key w-full bg-gray-100 text-gray-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border border-gray-300 shadow-sm',
-          pressedKeys.has('Enter') ? 'bg-gray-300' : '',
-        ]"
-        style="flex: 1.2 1 0%"
+        key="key-question"
+        keyValue="?"
+        :pressed="false"
+        buttonClass="keyboard-key w-full bg-gray-50 text-gray-800 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-gray-300 shadow-sm"
+        style="flex: 0.75 1 0%"
         @press="handleKeyDown"
         @release="handleKeyUp"
       >
-        {{ $t("enterKey") }}
+        ?
       </KeyboardKey>
+      <button
+        key="key-suggest"
+        class="keyboard-key w-full bg-yellow-100 text-yellow-700 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md border border-yellow-300 shadow-sm"
+        style="flex: 1 1 0%"
+        @click="handleSuggestPress"
+        :disabled="props.isGeneratingSuggestion"
+      >
+        <div class="flex items-center justify-center h-full">
+          <template v-if="props.isGeneratingSuggestion">
+            <svg
+              class="h-6 w-6 shrink-0 animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </template>
+          <template v-else>
+            <svg
+              class="h-6 w-6 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              ></path>
+            </svg>
+          </template>
+        </div>
+      </button>
     </div>
   </div>
 </template>
@@ -244,8 +262,12 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  isGeneratingSuggestion: {
+    type: Boolean,
+    default: false,
+  },
 });
-const pressedKeys = ref(new Set());
+const pressedKeys = new Set();
 const deleteInterval = ref(null);
 const deleteTimeout = ref(null);
 const deleteSpeedUpTimeout = ref(null);
@@ -264,7 +286,7 @@ function handleKeyDown(key) {
   // Normalize letter keys to uppercase for consistent pressed state tracking
   const normalizedKey =
     key.length === 1 && /[a-zA-Z]/.test(key) ? key.toUpperCase() : key;
-  pressedKeys.value.add(normalizedKey);
+  pressedKeys.add(normalizedKey);
   keyboardActions.pressKey(key);
 
   if (key === "Backspace") {
@@ -276,7 +298,7 @@ function handleKeyDown(key) {
     // Start repeat deletion after 250ms
     deleteTimeout.value = setTimeout(() => {
       deleteInterval.value = setInterval(() => {
-        if (pressedKeys.value.has("Backspace")) {
+        if (pressedKeys.has("Backspace")) {
           emit("on-key-press", key);
         }
       }, 100); // Initial speed: 100ms per deletion
@@ -340,7 +362,7 @@ function handleKeyUp(key) {
   // Normalize letter keys to uppercase for consistent pressed state tracking
   const normalizedKey =
     key.length === 1 && /[a-zA-Z]/.test(key) ? key.toUpperCase() : key;
-  pressedKeys.value.delete(normalizedKey);
+  pressedKeys.delete(normalizedKey);
 
   if (key === "Backspace") {
     // Emit one more backspace on release
@@ -360,6 +382,22 @@ function handleKeyUp(key) {
       deleteSpeedUpTimeout.value = null;
     }
   }
+}
+
+function handleSuggestPress() {
+  // Trigger vibration if supported
+  if ("vibrate" in navigator) {
+    navigator.vibrate(10);
+  }
+  emit("on-key-press", "Suggest");
+}
+
+function handleBackspacePress() {
+  // Trigger vibration if supported
+  if ("vibrate" in navigator) {
+    navigator.vibrate(10);
+  }
+  emit("on-key-press", "Backspace");
 }
 </script>
 

@@ -61,7 +61,6 @@ export const useWords = (id?: string) => {
           method: "POST",
           body: { sentence: fullText },
         });
-        console.log("Sentence correction:", result);
         // Clear previous sentence errors
         words.value.forEach((w) => (w.sentenceError = null));
         if (result.type === "correction") {
@@ -93,6 +92,9 @@ export const useWords = (id?: string) => {
     const word = words.value.find((w) => w.id === id);
     if (!word) return;
 
+    // Skip processing if already checked (e.g., suggested words)
+    if (word.status === "checked") return;
+
     // Clean the word by removing commas and dots, and make lowercase
     const cleanedWordText = word.text.toLowerCase().replace(/[,.]/g, "").trim();
 
@@ -117,14 +119,7 @@ export const useWords = (id?: string) => {
       }
     };
 
-    console.log(
-      "Processing word:",
-      cleanedWordText,
-      "status before:",
-      word.status
-    );
     updateWord((w) => ({ ...w, status: "pending" }));
-    console.log("Status set to pending for word:", word.text);
 
     try {
       // Call spell-check and translation separately
@@ -183,13 +178,10 @@ export const useWords = (id?: string) => {
           updateWord((w) => ({ ...w, newlyAdded: false }));
         }, 1000);
       }
-
-      console.log("Status set to checked for word:", cleanedWordText);
     } catch (error) {
       // Remove controller on error
       abortControllers.value.delete(id);
       if (error.name === "AbortError") {
-        console.log("Word processing cancelled for:", cleanedWordText);
         // Reset status to idle if cancelled
         updateWord((w) => ({ ...w, status: "idle" }));
         return;

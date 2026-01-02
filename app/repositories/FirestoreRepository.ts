@@ -20,6 +20,27 @@ import {
 } from "firebase/firestore";
 import { db } from "../../plugins/firebase.client";
 
+export interface QueryFilter {
+  field: string;
+  operator:
+    | "=="
+    | "!="
+    | "<"
+    | "<="
+    | ">"
+    | ">="
+    | "in"
+    | "not-in"
+    | "array-contains"
+    | "array-contains-any";
+  value: any;
+}
+
+export interface OrderBy {
+  field: string;
+  direction: "asc" | "desc";
+}
+
 export class FirestoreRepository<T extends Record<string, any>> {
   private collectionName: string;
   private collectionRef: CollectionReference<T>;
@@ -135,10 +156,31 @@ export class FirestoreRepository<T extends Record<string, any>> {
   }
 
   /**
-   * Query documents with constraints
+   * Query documents with filters
    */
-  async query(constraints: QueryConstraint[]): Promise<T[]> {
+  async query(
+    filters: QueryFilter[] = [],
+    orderBy?: OrderBy,
+    limitCount?: number
+  ): Promise<T[]> {
     try {
+      const constraints: QueryConstraint[] = [];
+
+      // Add where constraints
+      filters.forEach((filter) => {
+        constraints.push(where(filter.field, filter.operator, filter.value));
+      });
+
+      // Add orderBy if specified
+      if (orderBy) {
+        constraints.push(orderBy(orderBy.field, orderBy.direction));
+      }
+
+      // Add limit if specified
+      if (limitCount) {
+        constraints.push(limit(limitCount));
+      }
+
       const q = query(this.collectionRef, ...constraints);
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map((doc) => ({
@@ -156,7 +198,9 @@ export class FirestoreRepository<T extends Record<string, any>> {
    */
   async findByField(field: keyof T, value: any): Promise<T[]> {
     try {
-      return await this.query([where(field as string, "==", value)]);
+      return await this.query([
+        { field: field as string, operator: "==", value },
+      ]);
     } catch (error) {
       console.error(
         `Error finding documents by ${String(field)} in ${

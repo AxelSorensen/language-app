@@ -15,7 +15,6 @@ export default defineEventHandler(async (event) => {
 
   const extraInstruction =
     getWordLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
-  console.log("Translating word:", word, "with context:", context);
   // Construct prompt for translation
   const prompt = `You are a translation assistant. Translate the specified word: "${word}" from ${targetLanguage} to ${sourceLanguage}, considering the context: "${context}".
 
@@ -54,6 +53,5 @@ Return a JSON object.`;
   // Set translation to "unknown" if null
   if (result && !result.translation) result.translation = "unknown";
 
-  console.log("Translation result:", result);
   return result;
 });
