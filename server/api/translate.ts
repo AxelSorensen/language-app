@@ -1,4 +1,7 @@
-import { getLanguageInstructions } from "../constants";
+import {
+  getLanguageInstructions,
+  OUTPUT_LANGUAGE_INSTRUCTIONS,
+} from "../constants";
 
 import { defineEventHandler, getCookie, readBody } from "h3";
 
@@ -41,8 +44,13 @@ export default defineEventHandler(async (event) => {
     "Spanish";
 
   // Use extra instructions if available
-  const extraInstruction =
+  const inputInstruction =
     getLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
+  const outputInstruction =
+    OUTPUT_LANGUAGE_INSTRUCTIONS[targetLanguageId] || "";
+  const extraInstruction = [inputInstruction, outputInstruction]
+    .filter(Boolean)
+    .join("\n\n");
 
   let prompt = "";
   let input = "";
