@@ -29,9 +29,12 @@ export const useWords = (id?: string) => {
   const abortControllers = ref<Map<string, AbortController>>(new Map());
 
   // Clear cache when language changes
-  watch(() => targetLanguage.value.id, () => {
-    // Cache cleared when language changes (no longer needed)
-  });
+  watch(
+    () => targetLanguage.value.id,
+    () => {
+      // Cache cleared when language changes (no longer needed)
+    }
+  );
 
   const cancelWordProcessing = (id: string) => {
     const controller = abortControllers.value.get(id);
@@ -117,7 +120,10 @@ export const useWords = (id?: string) => {
     }
 
     // Clean the word by removing all punctuation for processing
-    const cleanedWordText = word.text.toLowerCase().replace(/[!?.,;:()[\]{}"'\-]/g, "").trim();
+    const cleanedWordText = word.text
+      .toLowerCase()
+      .replace(/[!?.,;:()[\]{}"'\-]/g, "")
+      .trim();
 
     if (!fullText.trim() && words.value.length > 1) {
       words.value = [];

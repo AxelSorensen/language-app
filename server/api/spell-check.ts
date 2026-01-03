@@ -117,7 +117,10 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  console.log(`Typo.js suggestions for "${word}" in ${targetLanguageId}:`, typoSuggestions);
+  console.log(
+    `Typo.js suggestions for "${word}" in ${targetLanguageId}:`,
+    typoSuggestions
+  );
   console.log(`Typo.js considers "${word}" correct:`, isTypoCorrect);
 
   // Always use LLM for spell checking to catch accent marks and context-based corrections
@@ -136,7 +139,7 @@ export default defineEventHandler(async (event) => {
 The user wrote: "${word}"
 Context: "${context}"
 
-Typo.js considers this word ${isTypoCorrect ? 'correct' : 'incorrect'}.
+Typo.js considers this word ${isTypoCorrect ? "correct" : "incorrect"}.
 Typo.js suggestions: ${typoSuggestions.join(", ")}
 
 Choose the best correction from the suggestions, or suggest a better one if none are good.
@@ -158,7 +161,7 @@ If the word is actually correct in context, return type "valid".`;
 The user wrote: "${word}"
 Context: "${context}"
 
-Typo.js considers this word ${isTypoCorrect ? 'correct' : 'incorrect'}.
+Typo.js considers this word ${isTypoCorrect ? "correct" : "incorrect"}.
 
 ${extraInstruction}
 
