@@ -119,10 +119,10 @@ export const useWords = (id?: string) => {
       return;
     }
 
-    // Clean the word by removing all punctuation for processing
+    // Clean the word by removing terminal punctuation (! ? .) from start and end for processing
     const cleanedWordText = word.text
       .toLowerCase()
-      .replace(/[!?.,;:()[\]{}"'\-]/g, "")
+      .replace(/^[!?.]*|[!?.]*$/g, "")
       .trim();
 
     if (!fullText.trim() && words.value.length > 1) {
