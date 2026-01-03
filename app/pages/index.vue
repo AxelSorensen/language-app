@@ -7,7 +7,15 @@
       ><span class="text-orange-500">i</span>go
     </h1>
     <div class="flex justify-between items-center mb-4">
-      <LanguageSelector @languageChange="handleLanguageChange" />
+      <div class="flex items-center gap-2">
+        <LanguageSelector @languageChange="handleLanguageChange" />
+        <span
+          v-if="!hasSpellchecker(targetLanguage.id)"
+          class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium"
+        >
+          Beta
+        </span>
+      </div>
       <div class="flex items-center">
         <div
           class="flex items-center bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-orange-700"
@@ -483,6 +491,11 @@ const languages = computed(() => ({
   source: sourceLanguage.value.id,
   target: targetLanguage.value.id,
 }));
+
+function hasSpellchecker(id) {
+  const languagesWithSpellchecker = ["en", "es", "da", "de", "fr", "it", "pt"];
+  return languagesWithSpellchecker.includes(id);
+}
 
 const today = computed(() => {
   const now = new Date();

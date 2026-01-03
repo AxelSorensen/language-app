@@ -287,7 +287,7 @@
   <!-- Tab indicator for translate mode - positioned in screen corner -->
   <div
     v-if="words.length > 0 && !isKeyboardVisible"
-    class="fixed bottom-4 left-4 z-50"
+    class="fixed bottom-4 left-4 z-[60]"
   >
     <button
       :class="[
@@ -341,7 +341,7 @@
       !translateComp.state.value.translateMode &&
       !isKeyboardVisible
     "
-    class="fixed bottom-4 right-4 z-50"
+    class="fixed bottom-4 right-4 z-[60]"
   >
     <button
       @click="handleSuggest"
@@ -419,7 +419,47 @@
           </div>
           <h4 class="font-semibold text-gray-900 text-lg">Translate Mode</h4>
         </div>
-        <p class="text-gray-700 text-sm leading-relaxed">
+        <p class="text-gray-700 text-sm leading-relaxed md:hidden">
+          Tap the
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-purple-200 text-purple-800 rounded inline-flex items-center"
+          >
+            <svg
+              class="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+              ></path>
+            </svg>
+          </kbd>
+          key on the custom keyboard to enter translate mode, then type words in
+          your native language and tap the
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-purple-200 text-purple-800 rounded inline-flex items-center"
+          >
+            <svg
+              class="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+              ></path>
+            </svg>
+          </kbd>
+          key again to translate and insert them.
+        </p>
+        <p class="text-gray-700 text-sm leading-relaxed hidden md:block">
           Press the
           <kbd
             class="px-1.5 py-0.5 text-xs font-semibold bg-gray-200 text-gray-800 rounded shadow-sm"
@@ -459,7 +499,29 @@
             Generate Suggestions
           </h4>
         </div>
-        <p class="text-gray-700 text-sm mb-3 leading-relaxed">
+        <p class="text-gray-700 text-sm mb-3 leading-relaxed md:hidden">
+          Tap the
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-yellow-200 text-yellow-800 rounded inline-flex items-center"
+          >
+            <svg
+              class="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              ></path>
+            </svg>
+          </kbd>
+          button on the custom keyboard to generate suggestions for your
+          writing.
+        </p>
+        <p class="text-gray-700 text-sm mb-3 leading-relaxed hidden md:block">
           Use the "Generate suggestion" button in the bottom-right corner or the
           keyboard button.
         </p>
