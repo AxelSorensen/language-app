@@ -60,7 +60,7 @@
       </div>
       <div class="flex-1 overflow-y-auto p-4">
         <div
-          v-if="dictionaryWords.length === 0"
+          v-if="vocabularyWords.length === 0"
           class="h-full flex flex-col items-center justify-center text-center text-gray-500"
         >
           <svg
@@ -198,11 +198,11 @@ const searchQuery = ref("");
 const heartAnimating = ref(new Set<string>());
 
 const {
-  dictionary: dictionaryWords,
+  dictionary: vocabularyWords,
   newlyAddedWords,
   newWordsCount,
   removeWord,
-  clearDictionary,
+  clearDictionary: clearVocabulary,
   clearNewWordsCount,
   clearNewlyAddedWords,
   toggleFavorite,
@@ -213,11 +213,11 @@ const {
 const filteredWords = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
   if (!query) {
-    return [...dictionaryWords.value].sort(
+    return [...vocabularyWords.value].sort(
       (a, b) => b.addedAt.getTime() - a.addedAt.getTime()
     );
   }
-  return dictionaryWords.value
+  return vocabularyWords.value
     .filter(
       (entry) =>
         entry.word.toLowerCase().includes(query) ||

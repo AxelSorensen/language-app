@@ -10,7 +10,7 @@
       class="relative group"
       @mouseenter="handleMouseEnter(idx)"
       @mouseleave="handleMouseLeave(idx)"
-      @click="handleClick(idx)"
+      @click="handleWordClick(idx)"
     >
       <input
         v-if="word.text !== '' || (!props.translateMode && !isTranslating)"
@@ -80,12 +80,7 @@
         :ref="(el) => (tooltipRefs[idx] = el)"
         :text="
           word.correction ||
-          (word.sentenceError
-            ? word.sentenceError.correction +
-              ' (' +
-              word.sentenceError.explanation +
-              ')'
-            : '') ||
+          (word.sentenceError ? word.sentenceError.correction : '') ||
           word.translation ||
           ''
         "
@@ -99,14 +94,13 @@
             : 'translation'
         "
         :enabled="!!(word.correction || word.sentenceError || word.translation)"
-        :class="{ 'opacity-100': hoveredIdx === idx || clickedIdx === idx }"
+        :class="{
+          'opacity-100': hoveredIdx === idx || touchActivatedIdx === idx,
+        }"
         @applyCorrection="applyCorrection(idx)"
         @applySentenceCorrection="handleApplySentenceCorrection"
         @deleteWord="handleDeleteWord(idx)"
-        @close="
-          hoveredIdx = null;
-          clickedIdx = null;
-        "
+        @close="handleTooltipClose"
       />
     </div>
   </div>
@@ -172,8 +166,7 @@ const translateInputRef = ref<HTMLInputElement>();
 const currentFocusedIdx = ref(0);
 
 const hoveredIdx = ref<number | null>(null);
-
-const clickedIdx = ref<number | null>(null);
+const touchActivatedIdx = ref<number | null>(null);
 
 const inputsRefs = ref<HTMLInputElement[]>([]);
 const setInputRef = (idx: number, el: HTMLInputElement | null) => {
@@ -243,7 +236,7 @@ const saveSelection = (idx: number) => {
   words.value[idx].translation = null;
   // Close any open tooltips when typing
   hoveredIdx.value = null;
-  clickedIdx.value = null;
+  touchActivatedIdx.value = null;
   // Start typing timeout for processing
   if (typingTimeout.value) clearTimeout(typingTimeout.value);
   typingTimeout.value = setTimeout(() => {
@@ -330,8 +323,6 @@ const handleBackspace = (inputEl: HTMLInputElement, idx: number) => {
       inputEl.selectionStart = inputEl.selectionEnd = start - 1;
     }
     inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-    // Focus on end after backspace
-    nextTick(() => focusOnEnd(idx));
   }
 };
 
@@ -627,15 +618,21 @@ const handleMouseEnter = (idx: number) => {
 };
 
 const handleMouseLeave = (idx: number) => {
-  if (clickedIdx.value !== idx) {
-    hoveredIdx.value = null;
-  }
+  hoveredIdx.value = null;
 };
 
-const handleClick = (idx: number) => {
-  clickedIdx.value = clickedIdx.value === idx ? null : idx;
-  if (clickedIdx.value === idx) {
-    tooltipRefs.value[idx]?.adjustPosition();
+const handleTooltipClose = () => {
+  hoveredIdx.value = null;
+  touchActivatedIdx.value = null;
+};
+
+const handleWordClick = (idx: number) => {
+  // For touch devices, show tooltip on click
+  touchActivatedIdx.value = touchActivatedIdx.value === idx ? null : idx;
+  if (touchActivatedIdx.value === idx) {
+    nextTick(() => {
+      tooltipRefs.value[idx]?.adjustPosition();
+    });
   }
 };
 

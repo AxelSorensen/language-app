@@ -1,7 +1,7 @@
 import { useState } from "#app";
 import { ref, computed, readonly } from "vue";
 
-export interface DictionaryEntry {
+export interface VocabularyEntry {
   word: string;
   translation: string;
   addedAt: Date;
@@ -9,8 +9,8 @@ export interface DictionaryEntry {
   usageCount: number;
 }
 
-export const useDictionary = () => {
-  const dictionary = useState<DictionaryEntry[]>("dictionary", () => []);
+export const useVocabulary = () => {
+  const vocabulary = useState<VocabularyEntry[]>("vocabulary", () => []);
   const newlyAddedWords = useState<Set<string>>(
     "newlyAddedWords",
     () => new Set()
@@ -22,7 +22,7 @@ export const useDictionary = () => {
   );
 
   // Ensure all entries have usageCount for backward compatibility
-  dictionary.value.forEach((entry) => {
+  vocabulary.value.forEach((entry) => {
     if (typeof entry.usageCount !== "number") {
       entry.usageCount = 1;
     }
@@ -33,7 +33,7 @@ export const useDictionary = () => {
     const cleanedWord = word.replace(/[,.]/g, "").trim().toLowerCase();
 
     // Check if cleaned word already exists
-    const existingIndex = dictionary.value.findIndex((entry) => {
+    const existingIndex = vocabulary.value.findIndex((entry) => {
       const entryLang =
         typeof entry.language === "string" ? entry.language : entry.language.id;
       return entry.word === cleanedWord && entryLang === language;
@@ -41,14 +41,14 @@ export const useDictionary = () => {
 
     if (existingIndex !== -1) {
       // Ensure usageCount exists (for backward compatibility)
-      if (typeof dictionary.value[existingIndex].usageCount !== "number") {
-        dictionary.value[existingIndex].usageCount = 1;
+      if (typeof vocabulary.value[existingIndex].usageCount !== "number") {
+        vocabulary.value[existingIndex].usageCount = 1;
       }
       // Increment usage count
-      dictionary.value[existingIndex].usageCount += 1;
+      vocabulary.value[existingIndex].usageCount += 1;
       return false; // Word already existed
     } else if (cleanedWord) {
-      dictionary.value.push({
+      vocabulary.value.push({
         word: cleanedWord,
         translation,
         addedAt: new Date(),
@@ -67,18 +67,18 @@ export const useDictionary = () => {
   };
 
   const removeWord = (word: string, language: string) => {
-    const index = dictionary.value.findIndex((entry) => {
+    const index = vocabulary.value.findIndex((entry) => {
       const entryLang =
         typeof entry.language === "string" ? entry.language : entry.language.id;
       return entry.word === word.toLowerCase() && entryLang === language;
     });
     if (index !== -1) {
-      dictionary.value.splice(index, 1);
+      vocabulary.value.splice(index, 1);
     }
   };
 
   const hasWord = (word: string, language: string) => {
-    return dictionary.value.some((entry) => {
+    return vocabulary.value.some((entry) => {
       const entryLang =
         typeof entry.language === "string" ? entry.language : entry.language.id;
       return entry.word === word.toLowerCase() && entryLang === language;
@@ -86,7 +86,7 @@ export const useDictionary = () => {
   };
 
   const getWordsForLanguage = (language: string) => {
-    return dictionary.value.filter((entry) => {
+    return vocabulary.value.filter((entry) => {
       const entryLang =
         typeof entry.language === "string" ? entry.language : entry.language.id;
       return entryLang === language;
@@ -114,14 +114,14 @@ export const useDictionary = () => {
     return favoritedWords.value.has(word.toLowerCase());
   };
 
-  const clearDictionary = () => {
-    dictionary.value = [];
+  const clearVocabulary = () => {
+    vocabulary.value = [];
   };
 
-  const totalWords = computed(() => dictionary.value.length);
+  const totalWords = computed(() => vocabulary.value.length);
 
   return {
-    dictionary: readonly(dictionary),
+    dictionary: readonly(vocabulary),
     newlyAddedWords: readonly(newlyAddedWords),
     newWordsCount: readonly(newWordsCount),
     favoritedWords: readonly(favoritedWords),
@@ -129,7 +129,7 @@ export const useDictionary = () => {
     removeWord,
     hasWord,
     getWordsForLanguage,
-    clearDictionary,
+    clearDictionary: clearVocabulary,
     clearNewWordsCount,
     clearNewlyAddedWords,
     toggleFavorite,

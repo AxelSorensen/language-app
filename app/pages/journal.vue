@@ -261,7 +261,7 @@
     </template>
   </BaseLayout>
 
-  <DictionarySidebar :is-open="isDictionaryOpen" @close="closeDictionary" />
+  <VocabularySidebar :is-open="isDictionaryOpen" @close="closeDictionary" />
 </template>
 
 <script setup lang="ts">
@@ -271,14 +271,14 @@ import { onBeforeRouteLeave } from "vue-router";
 import ModularInput from "~/components/ModularInput.vue";
 import CustomKeyboard from "~/components/CustomKeyboard.vue";
 import BaseLayout from "~/layouts/BaseLayout.vue";
-import DictionarySidebar from "~/components/DictionarySidebar.vue";
+import VocabularySidebar from "~/components/VocabularySidebar.vue";
 import ProgressBar from "~/components/ProgressBar.vue";
 import { generateRandomId } from "~/utils/misc";
 import { useWords } from "~/composables/useWords";
 import { useTranslateMode } from "~/composables/useTranslateMode";
 import { useEntries } from "~/composables/useEntries";
 import { FirestoreRepository } from "~/repositories/FirestoreRepository";
-import { useDictionary } from "~/composables/useDictionary";
+import { useVocabulary } from "~/composables/useVocabulary";
 import { useSettings } from "~/composables/useSettings";
 
 definePageMeta({
@@ -359,7 +359,7 @@ const {
 } = useEntries();
 
 const firebaseRepo = new FirestoreRepository("journal_entries");
-const { newWordsCount, clearNewWordsCount } = useDictionary();
+const { newWordsCount, clearNewWordsCount } = useVocabulary();
 
 const today = computed(() => {
   const route = useRoute();

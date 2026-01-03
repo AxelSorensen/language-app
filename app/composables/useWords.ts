@@ -2,7 +2,7 @@ import { useState, useCookie } from "#app";
 import { ref, computed } from "vue";
 import { LanguageService } from "~/services/LanguageService";
 import { generateRandomId } from "~/utils/misc";
-import { useDictionary } from "~/composables/useDictionary";
+import { useVocabulary } from "~/composables/useVocabulary";
 import { useSettings } from "~/composables/useSettings";
 import type { Word } from "~/types";
 
@@ -145,7 +145,7 @@ export const useWords = (id?: string) => {
         spellResult.type === "valid" &&
         translateResult.translation !== "unknown"
       ) {
-        const { addWord } = useDictionary();
+        const { addWord } = useVocabulary();
         wasAddedToDictionary = addWord(
           cleanedWordText,
           translateResult.translation,

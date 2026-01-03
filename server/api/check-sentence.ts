@@ -30,20 +30,17 @@ Do NOT flag:
 - Wrong words that are correctly spelled but incorrect for the context
 - Punctuation issues
 
-Return the wrong words and their correction. Return the exact text from the sentence that has grammatical errors and what it should be. Also provide a very brief explanation of the grammar rule violated.
-
-Provide the explanation in ${sourceLanguage}.
+Return the wrong words and their correction. Return the exact text from the sentence that has grammatical errors and what it should be.
 
 Return:
 - type: "valid" | "correction"
 - wrong_text: the exact wrong words if type is "correction", otherwise empty string
 - correction: what it should be if type is "correction", otherwise empty string
-- explanation: brief explanation if type is "correction", otherwise empty string
 
 Examples of GRAMMAR errors to flag:
-- "ella puedo hablar" → wrong_text: "puedo", correction: "puede", explanation: "Subject-verb agreement error"
-- "ella puedo hablo" → wrong_text: "puedo hablo", correction: "puede hablar", explanation: "Incorrect verb forms"
-- "yo voy a la casa" → wrong_text: "voy a la", correction: "voy al", explanation: "Article agreement with gender"
+- "ella puedo hablar" → wrong_text: "puedo", correction: "puede"
+- "ella puedo hablo" → wrong_text: "puedo hablo", correction: "puede hablar"
+- "yo voy a la casa" → wrong_text: "voy a la", correction: "voy al"
 
 Examples of what NOT to flag (spelling/typos):
 - "hola" written as "ola" → ignore
@@ -74,13 +71,8 @@ ${extraInstruction ? `- ${extraInstruction}` : ""}`;
         description:
           "What the wrong text should be corrected to, or empty string if no errors",
       },
-      explanation: {
-        type: "string",
-        description:
-          "A very brief explanation of why this correction is needed, or empty string if no errors",
-      },
     },
-    required: ["type", "wrong_text", "correction", "explanation"],
+    required: ["type", "wrong_text", "correction"],
     additionalProperties: false,
   };
 
