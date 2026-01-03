@@ -12,7 +12,9 @@
           {{ $t("vocabulary") }}
         </h2>
         <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-500">{{ totalWords }} words</span>
+          <span class="text-sm text-gray-500"
+            >{{ filteredWords.length }} words</span
+          >
           <button
             @click="closeSidebar"
             class="p-1 hover:bg-gray-100 rounded-md transition-colors"
@@ -106,26 +108,45 @@
         <div v-else class="space-y-2">
           <div
             v-for="entry in filteredWords"
-            :key="`${entry.word}-${entry.language}`"
+            :key="`${entry.word || 'unknown'}-${entry.language || 'unknown'}`"
             class="bg-gray-50 rounded-lg p-3 border border-gray-200 transition-all duration-500"
           >
             <div class="flex flex-col">
               <div class="flex items-start justify-between">
                 <div class="flex-1">
                   <div class="font-medium text-gray-900">
-                    {{ entry.word }}
+                    {{ entry.word || "Unknown word" }}
                   </div>
                   <div class="text-sm text-gray-600 mt-1">
-                    {{ entry.translation }}
+                    {{ entry.translation || "No translation" }}
                   </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
                   <span
                     v-if="isNewlyAdded(entry)"
                     class="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
                   >
                     NEW
                   </span>
+                  <button
+                    @click="handleDeleteClick(entry.word, entry.language)"
+                    class="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    :title="$t('deleteWord')"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      ></path>
+                    </svg>
+                  </button>
                   <button
                     @click="handleHeartClick(entry.word)"
                     class="p-1 transition-colors"
@@ -134,9 +155,9 @@
                         ? 'text-red-500'
                         : 'text-gray-400 hover:text-red-500',
                       {
-                        'heart-click': heartAnimating.has(
-                          entry.word.toLowerCase()
-                        ),
+                        'heart-click':
+                          entry.word &&
+                          heartAnimating.has(entry.word.toLowerCase()),
                       },
                     ]"
                     :title="$t('toggleFavorite')"
@@ -183,6 +204,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useVocabulary } from "~/composables/useVocabulary";
+import { useSettings } from "~/composables/useSettings";
 
 interface Props {
   isOpen: boolean;
@@ -197,12 +219,14 @@ const emit = defineEmits<{
 const searchQuery = ref("");
 const heartAnimating = ref(new Set<string>());
 
+const { targetLanguage } = useSettings();
+
 const {
-  dictionary: vocabularyWords,
+  vocabulary: vocabularyWords,
   newlyAddedWords,
   newWordsCount,
-  removeWord,
-  clearDictionary: clearVocabulary,
+  deleteWord,
+  clearVocabulary,
   clearNewWordsCount,
   clearNewlyAddedWords,
   toggleFavorite,
@@ -212,16 +236,18 @@ const {
 
 const filteredWords = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
+  const currentLanguage = targetLanguage.value.id;
+  const words = vocabularyWords.value.filter(
+    (entry) => entry.language === currentLanguage
+  );
   if (!query) {
-    return [...vocabularyWords.value].sort(
-      (a, b) => b.addedAt.getTime() - a.addedAt.getTime()
-    );
+    return [...words].sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime());
   }
-  return vocabularyWords.value
+  return words
     .filter(
       (entry) =>
-        entry.word.toLowerCase().includes(query) ||
-        entry.translation.toLowerCase().includes(query)
+        (entry.word && entry.word.toLowerCase().includes(query)) ||
+        (entry.translation && entry.translation.toLowerCase().includes(query))
     )
     .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime());
 });
@@ -243,17 +269,24 @@ const formatDate = (date: Date) => {
 };
 
 const isNewlyAdded = (entry: { word: string; language: string }) => {
+  if (!entry.word) return false;
   const key = `${entry.word.toLowerCase()}`;
   return newlyAddedWords.value.has(key);
 };
 
 const handleHeartClick = (word: string) => {
+  if (!word) return;
   const key = word.toLowerCase();
   heartAnimating.value.add(key);
   toggleFavorite(word);
   setTimeout(() => {
     heartAnimating.value.delete(key);
   }, 200);
+};
+
+const handleDeleteClick = (word: string, language: string) => {
+  if (!word) return;
+  deleteWord(word, language);
 };
 
 const closeSidebar = () => {

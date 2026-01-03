@@ -88,7 +88,7 @@
             </button>
 
             <button
-              @click="toggleDictionary"
+              @click="toggleVocabulary"
               class="cursor-pointer px-3 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors flex items-center gap-2 relative"
               title="{{ $t('openVocabulary') }}"
             >
@@ -216,13 +216,13 @@
     <template #keyboard>
       <div class="p-4">
         <div class="mx-auto max-w-4xl text-center">
-          <div class="inline-flex items-center px-4 py-2 min-h-[2.5rem]">
+          <div class="inline-flex items-center px-4 py-2 min-h-10">
             <div
               v-if="currentSentenceTranslation || isTranslatingSentence"
               class="flex items-center bg-gray-100 rounded-full px-3 py-1"
             >
               <div
-                class="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 mr-2 flex-shrink-0"
+                class="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 mr-2 shrink-0"
               >
                 <Icon name="heroicons:language" class="w-3 h-3 text-gray-600" />
               </div>
@@ -261,7 +261,7 @@
     </template>
   </BaseLayout>
 
-  <VocabularySidebar :is-open="isDictionaryOpen" @close="closeDictionary" />
+  <VocabularySidebar :is-open="isVocabularyOpen" @close="closeVocabulary" />
 </template>
 
 <script setup lang="ts">
@@ -279,10 +279,11 @@ import { useTranslateMode } from "~/composables/useTranslateMode";
 import { useEntries } from "~/composables/useEntries";
 import { FirestoreRepository } from "~/repositories/FirestoreRepository";
 import { useVocabulary } from "~/composables/useVocabulary";
+import type { Word } from "~/types";
 import { useSettings } from "~/composables/useSettings";
 
 definePageMeta({
-  layout: "keyboard",
+  layout: "base-layout",
 });
 
 const { sourceLanguage, targetLanguage } = useSettings();
@@ -316,7 +317,7 @@ const { wordGoal } = useSettings();
 
 const currentFocusIdx = ref(-1);
 
-const isDictionaryOpen = ref(false);
+const isVocabularyOpen = ref(false);
 
 const translateStartedOnEmpty = ref(false);
 
@@ -359,7 +360,13 @@ const {
 } = useEntries();
 
 const firebaseRepo = new FirestoreRepository("journal_entries");
-const { newWordsCount, clearNewWordsCount } = useVocabulary();
+const {
+  newWordsCount,
+  clearNewWordsCount,
+  saveVocabularyToFirestore,
+  loadVocabularyFromFirestore,
+  vocabulary,
+} = useVocabulary();
 
 const today = computed(() => {
   const route = useRoute();
@@ -383,31 +390,42 @@ const currentSentence = computed(() => {
   // Find the sentence containing the focused word
   let start = idx;
   // Go back to find the start of the sentence (after a dot or question mark)
-  while (
-    start > 0 &&
-    wordList[start - 1] &&
-    !wordList[start - 1].text.endsWith(".") &&
-    !wordList[start - 1].text.endsWith("?")
-  ) {
+  while (start > 0) {
+    const prevWord = wordList[start - 1];
+    if (
+      !prevWord ||
+      prevWord.text == null ||
+      prevWord.text.endsWith(".") ||
+      prevWord.text.endsWith("?")
+    ) {
+      break;
+    }
     start--;
   }
   let end = idx;
   // Go forward to find the end of the sentence (before a dot or question mark, but include up to the dot/question mark)
-  while (
-    end < wordList.length - 1 &&
-    wordList[end] &&
-    !wordList[end].text.endsWith(".") &&
-    !wordList[end].text.endsWith("?")
-  ) {
+  while (end < wordList.length - 1) {
+    const currentWord = wordList[end];
+    if (
+      !currentWord ||
+      currentWord.text == null ||
+      currentWord.text.endsWith(".") ||
+      currentWord.text.endsWith("?")
+    ) {
+      break;
+    }
     end++;
   }
   // Include the dot or question mark if present
-  if (
-    end < wordList.length - 1 &&
-    wordList[end + 1] &&
-    (wordList[end + 1].text === "." || wordList[end + 1].text === "?")
-  ) {
-    end++;
+  if (end < wordList.length - 1) {
+    const nextWord = wordList[end + 1];
+    if (
+      nextWord &&
+      nextWord.text != null &&
+      (nextWord.text === "." || nextWord.text === "?")
+    ) {
+      end++;
+    }
   }
   const sentenceWords = wordList.slice(start, end + 1);
   return sentenceWords
@@ -489,7 +507,7 @@ async function translateCurrentSentence() {
     });
     currentSentenceTranslation.value = response.translation;
   } catch (error) {
-    if (error.name === "AbortError") {
+    if (error instanceof Error && error.name === "AbortError") {
       console.log("Translation aborted");
       // Request was cancelled, do nothing
       return;
@@ -533,6 +551,9 @@ async function loadEntry() {
 
 onMounted(async () => {
   await loadEntry();
+
+  // Load vocabulary if not already loaded
+  await loadVocabularyFromFirestore();
 });
 
 onBeforeRouteLeave(async () => {
@@ -543,6 +564,13 @@ onBeforeRouteLeave(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     saveEntry();
+  }
+
+  // Save vocabulary to Firestore before leaving
+  try {
+    await saveVocabularyToFirestore();
+  } catch (error) {
+    console.error("Error saving vocabulary:", error);
   }
 });
 
@@ -582,13 +610,15 @@ async function handleTab(idx: number) {
       );
       if (lastWordId) {
         await nextTick();
-        modularInputRef.value.focusOnEndById(lastWordId);
+        modularInputRef.value?.focusOnEndById(lastWordId);
       }
       translateCurrentSentence();
     } else {
       translateComp.state.value.translateMode = false;
       await nextTick();
-      modularInputRef.value.focusOnEndById(words.value[idx].id);
+      if (words.value[idx]) {
+        modularInputRef.value?.focusOnEndById(words.value[idx].id);
+      }
     }
     // Ensure translate mode exits after translation
     // translateComp.state.value.translateMode = false; // Now done in translateAndInsert
@@ -621,7 +651,7 @@ async function handleSuggest() {
   isGeneratingSuggestion.value = true;
 
   // Add a temporary "generating" word
-  const tempWord = {
+  const tempWord: Word = {
     id: generateRandomId(),
     text: $t("generatingSuggestion"),
     status: "idle",
@@ -656,11 +686,11 @@ async function handleSuggest() {
       const newWords = completion
         .trim()
         .split(" ")
-        .filter((word) => word.trim() !== "");
+        .filter((word: string) => word.trim() !== "");
       if (newWords.length > 0) {
         // The API now handles capitalization properly, so no need to capitalize here
         // Collect all new words first, then add them in one operation to minimize reactive updates
-        const wordsToAdd = newWords.map((wordText) => ({
+        const wordsToAdd = newWords.map((wordText: string) => ({
           id: generateRandomId(),
           text: wordText,
           status: "idle", // Mark as idle so they get processed normally
@@ -680,7 +710,9 @@ async function handleSuggest() {
           i < words.value.length;
           i++
         ) {
-          processWord(words.value[i].id, fullText);
+          if (words.value[i]) {
+            processWord(words.value[i]!.id, fullText);
+          }
         }
       }
     } else {
@@ -720,15 +752,15 @@ function handleClearWords() {
   });
 }
 
-function toggleDictionary() {
-  isDictionaryOpen.value = !isDictionaryOpen.value;
-  if (isDictionaryOpen.value) {
+function toggleVocabulary() {
+  isVocabularyOpen.value = !isVocabularyOpen.value;
+  if (isVocabularyOpen.value) {
     clearNewWordsCount();
   }
 }
 
-function closeDictionary() {
-  isDictionaryOpen.value = false;
+function closeVocabulary() {
+  isVocabularyOpen.value = false;
 }
 
 function completeEntry() {

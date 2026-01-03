@@ -139,14 +139,14 @@ export const useWords = (id?: string) => {
       // Remove controller if successful
       abortControllers.value.delete(id);
 
-      // Add to dictionary if word is valid and has translation
-      let wasAddedToDictionary = false;
+      // Add to vocabulary if word is valid and has translation
+      let wasAddedToVocabulary = false;
       if (
         spellResult.type === "valid" &&
         translateResult.translation !== "unknown"
       ) {
         const { addWord } = useVocabulary();
-        wasAddedToDictionary = addWord(
+        wasAddedToVocabulary = addWord(
           cleanedWordText,
           translateResult.translation,
           targetLanguage.value.id
@@ -162,14 +162,14 @@ export const useWords = (id?: string) => {
             ? "unknown"
             : translateResult.translation,
         status: "checked",
-        newlyAdded: wasAddedToDictionary ? true : w.newlyAdded,
-        firstUsed: wasAddedToDictionary
+        newlyAdded: wasAddedToVocabulary ? true : w.newlyAdded,
+        firstUsed: wasAddedToVocabulary
           ? new Date().toISOString()
           : w.firstUsed,
       }));
 
       // If newly added, clear all other newlyAdded flags and remove this one after 1 second
-      if (wasAddedToDictionary) {
+      if (wasAddedToVocabulary) {
         // Clear all other newlyAdded flags
         words.value.forEach((word, index) => {
           if (word.id !== id && word.newlyAdded) {

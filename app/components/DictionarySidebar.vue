@@ -198,11 +198,11 @@ const searchQuery = ref("");
 const heartAnimating = ref(new Set<string>());
 
 const {
-  dictionary: dictionaryWords,
+  vocabulary: dictionaryWords,
   newlyAddedWords,
   newWordsCount,
   removeWord,
-  clearDictionary,
+  clearVocabulary,
   clearNewWordsCount,
   clearNewlyAddedWords,
   toggleFavorite,

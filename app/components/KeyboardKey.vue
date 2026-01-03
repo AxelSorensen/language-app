@@ -64,12 +64,15 @@ function handlePress(e) {
 
 function handleRelease(e) {
   e.preventDefault();
-  // Delay hiding the popup
-  popupTimeout.value = setTimeout(() => {
-    showPopup.value = false;
-    popupTimeout.value = null;
-  }, popupDelay);
-  isPressed.value = false;
-  emit("release", props.keyValue);
+  // Only emit release if the button was actually pressed
+  if (isPressed.value) {
+    // Delay hiding the popup
+    popupTimeout.value = setTimeout(() => {
+      showPopup.value = false;
+      popupTimeout.value = null;
+    }, popupDelay);
+    isPressed.value = false;
+    emit("release", props.keyValue);
+  }
 }
 </script>

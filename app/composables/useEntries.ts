@@ -24,6 +24,7 @@ export function useEntries() {
     try {
       const entryData: Omit<DiaryEntry, "id"> = {
         text: "",
+        wordCount: 0,
         words: [],
         language: currentTargetLanguage.value,
         createdAt: new Date().toISOString(),
@@ -102,6 +103,7 @@ export function useEntries() {
       const processedEntries = fetchedEntries.map((entry) => ({
         ...entry,
         createdAt: entry.createdAt || new Date().toISOString(),
+        wordCount: entry.wordCount || 0,
       }));
 
       // Update the reactive state

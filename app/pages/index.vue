@@ -86,7 +86,7 @@
     <div v-else class="flex-1 flex flex-col">
       <!-- Today's Journal -->
       <div
-        v-if="!todayEntry || todayEntry.wordCount < wordGoal"
+        v-if="!todayEntry || (todayEntry.wordCount || 0) < wordGoal"
         class="mb-6 p-6 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm"
       >
         <div class="flex items-center justify-between mb-4">
@@ -312,7 +312,7 @@
           <!-- No Previous Entries -->
           <div v-else class="flex-1 flex items-center justify-center">
             <div
-              v-if="todayEntry && todayEntry.wordCount >= wordGoal"
+              v-if="todayEntry && (todayEntry.wordCount || 0) >= wordGoal"
               class="space-y-4 w-full"
             >
               <div
@@ -486,9 +486,9 @@ const languages = computed(() => ({
 
 const today = computed(() => {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 });
 
@@ -509,9 +509,9 @@ const todayEntry = computed(
         !isNaN(new Date(e.createdAt).getTime()) &&
         (() => {
           const createdDate = new Date(e.createdAt);
-          const year = createdDate.getFullYear();
-          const month = String(createdDate.getMonth() + 1).padStart(2, "0");
-          const day = String(createdDate.getDate()).padStart(2, "0");
+          const year = createdDate.getUTCFullYear();
+          const month = String(createdDate.getUTCMonth() + 1).padStart(2, "0");
+          const day = String(createdDate.getUTCDate()).padStart(2, "0");
           return `${year}-${month}-${day}`;
         })() === today.value
     ) || null
@@ -525,16 +525,19 @@ const previousEntries = computed(() => {
       const entryDate = entry.createdAt
         ? (() => {
             const createdDate = new Date(entry.createdAt!);
-            const year = createdDate.getFullYear();
-            const month = String(createdDate.getMonth() + 1).padStart(2, "0");
-            const day = String(createdDate.getDate()).padStart(2, "0");
+            const year = createdDate.getUTCFullYear();
+            const month = String(createdDate.getUTCMonth() + 1).padStart(
+              2,
+              "0"
+            );
+            const day = String(createdDate.getUTCDate()).padStart(2, "0");
             return `${year}-${month}-${day}`;
           })()
         : null;
       if (entryDate === today.value) {
-        return entry.wordCount >= wordGoal.value;
+        return (entry.wordCount || 0) >= wordGoal.value;
       } else {
-        return entry.wordCount > 0;
+        return (entry.wordCount || 0) > 0;
       }
     })
     .sort((a, b) => {

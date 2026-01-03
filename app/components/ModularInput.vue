@@ -111,15 +111,7 @@ import { watch, nextTick } from "vue";
 import SimpleTooltip from "~/components/SimpleTooltip.vue";
 import { useState } from "#app";
 import { generateRandomId } from "~/utils/misc";
-
-interface Word {
-  text: string;
-  id: string;
-  correction: string | null;
-  translation: string | null;
-  status: "idle" | "pending";
-  sentenceError: any;
-}
+import type { Word } from "~/types";
 
 interface Props {
   translateMode?: boolean;
@@ -136,7 +128,7 @@ const words = defineModel<Word[]>("words");
 const emit = defineEmits<{
   "update:wordsToTranslate": [value: string];
   "blur-translate": [];
-  tab: [previousSelection: { idx: number; start: number; end: number } | null];
+  tab: [idx: number];
   space: [data: { id: string; fullText: string }];
   dot: [];
   suggest: [];
