@@ -568,7 +568,7 @@ onBeforeRouteLeave(async () => {
 
   // Save vocabulary to Firestore before leaving
   try {
-    await saveVocabularyToFirestore();
+    saveVocabularyToFirestore();
   } catch (error) {
     console.error("Error saving vocabulary:", error);
   }
