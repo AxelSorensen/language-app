@@ -3,7 +3,8 @@
     ref="tooltipRef"
     v-if="text && enabled"
     :class="[
-      'fixed z-100 px-3 py-2 text-sm rounded-xl border border-gray-300 duration-200 tooltip-bubble bg-white opacity-0 transition-opacity',
+      'fixed z-100 px-3 py-2 text-sm rounded-xl border border-gray-300 duration-200 tooltip-bubble bg-white transition-opacity',
+      enabled ? 'opacity-100' : 'opacity-0',
       `tooltip-${direction}`,
       type === 'translation'
         ? ' text-gray-600'
@@ -13,9 +14,7 @@
         ? ' text-red-600'
         : type === 'sentence'
         ? ' text-green-600 cursor-pointer hover:bg-green-50'
-        : ` text-green-600 cursor-pointer ${
-            !isHoveringInfo ? 'hover:bg-green-50' : ''
-          }`,
+        : ` text-green-600 cursor-pointer hover:bg-green-50`,
       // Only apply pointer-events-none for non-clickable tooltips
       (type === 'correction' && text !== 'null') ||
       type === 'unknown' ||
@@ -101,16 +100,6 @@
             ? 'cursor-pointer'
             : ''
         "
-        @mouseenter="
-          (type === 'translation' && text === 'unknown') || type === 'unknown'
-            ? null
-            : (isHoveringInfo = true)
-        "
-        @mouseleave="
-          (type === 'translation' && text === 'unknown') || type === 'unknown'
-            ? null
-            : (isHoveringInfo = false)
-        "
         @click="
           (type === 'translation' && text === 'unknown') || type === 'unknown'
             ? ($emit('deleteWord'), $event.stopPropagation())
@@ -169,7 +158,6 @@ const emit = defineEmits<{
   applySentenceCorrection: [];
   close: [];
 }>();
-const isHoveringInfo = ref(false);
 const tooltipRef = ref<HTMLElement>();
 const tooltipStyle = ref({ left: "", top: "", transform: "", arrowLeft: "" });
 const direction = ref<"top" | "bottom">("top");

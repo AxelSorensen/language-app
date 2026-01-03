@@ -14,9 +14,28 @@
           <div class="flex-1 mr-4">
             <ProgressBar :current="wordCount" :goal="wordGoal" height="h-3" />
           </div>
-          <span class="text-sm text-gray-600 whitespace-nowrap"
-            >{{ wordCount }}/{{ wordGoal }} {{ $t("words") }}</span
-          >
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600 whitespace-nowrap">{{ wordCount }}/{{ wordGoal }} {{ $t("words") }}</span>
+            <button
+              @click="isHelpModalOpen = true"
+              class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center"
+              title="Help"
+            >
+              <svg
+                class="w-4 h-4 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="flex justify-between items-center w-full">
           <div class="flex items-center gap-4">
@@ -262,10 +281,308 @@
   </BaseLayout>
 
   <VocabularySidebar :is-open="isVocabularyOpen" @close="closeVocabulary" />
+
+  <!-- Tab indicator for translate mode - positioned in screen corner -->
+  <div
+    v-if="words.length > 0 && !isKeyboardVisible"
+    class="fixed bottom-4 left-4 z-50"
+  >
+    <button
+      :class="[
+        'flex items-center rounded-lg px-3 py-2 transition-colors bg-transparent border border-dashed',
+        translateComp.state.value.translateMode
+          ? 'text-purple-600 hover:text-purple-700 border-purple-300'
+          : 'text-gray-600 hover:text-gray-700 border-gray-300',
+      ]"
+    >
+      <span class="text-sm font-normal">
+        <template v-if="!translateComp.state.value.translateMode">
+          Press
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-gray-200 rounded mx-1"
+            >Tab</kbd
+          >
+          to enter
+          <span
+            :class="
+              translateComp.state.value.translateMode
+                ? 'text-purple-600 font-bold'
+                : 'font-bold'
+            "
+            >translate mode</span
+          >
+        </template>
+        <template v-else-if="translateComp.state.value.wordsToTranslate.trim()">
+          Press
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-purple-200 rounded mx-1"
+            >Tab</kbd
+          >
+          to <span class="text-purple-600 font-bold">translate</span>
+        </template>
+        <template v-else>
+          Press
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-purple-200 rounded mx-1"
+            >Tab</kbd
+          >
+          to exit <span class="text-purple-600 font-bold">translate mode</span>
+        </template>
+      </span>
+    </button>
+  </div>
+
+  <!-- Generate suggestion button - positioned in screen corner -->
+  <div
+    v-if="
+      words.length > 0 &&
+      !translateComp.state.value.translateMode &&
+      !isKeyboardVisible
+    "
+    class="fixed bottom-4 right-4 z-50"
+  >
+    <button
+      @click="handleSuggest"
+      :disabled="isGeneratingSuggestion"
+      class="flex items-center bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg px-3 py-2 transition-colors border border-yellow-200 disabled:opacity-50"
+    >
+      <template v-if="isGeneratingSuggestion">
+        <svg
+          class="h-4 w-4 mr-2 shrink-0 animate-spin"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </template>
+      <template v-else>
+        <svg
+          class="h-4 w-4 mr-2 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+          ></path>
+        </svg>
+      </template>
+      <span class="text-sm font-medium">
+        <template v-if="isGeneratingSuggestion"> Generating... </template>
+        <template v-else> Generate suggestion </template>
+      </span>
+    </button>
+  </div>
+
+  <Modal
+    :is-open="isHelpModalOpen"
+    title="How to Use"
+    @close="isHelpModalOpen = false"
+  >
+    <div class="space-y-4">
+      <!-- Translate Mode Section -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="flex items-center mb-3">
+          <div
+            class="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full mr-3"
+          >
+            <svg
+              class="w-4 h-4 text-purple-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+              ></path>
+            </svg>
+          </div>
+          <h4 class="font-semibold text-gray-900 text-lg">Translate Mode</h4>
+        </div>
+        <p class="text-gray-700 text-sm leading-relaxed">
+          Press the
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-gray-200 text-gray-800 rounded shadow-sm"
+            >Tab</kbd
+          >
+          key to enter translate mode, then type words in your native language
+          and press
+          <kbd
+            class="px-1.5 py-0.5 text-xs font-semibold bg-gray-200 text-gray-800 rounded"
+            >Tab</kbd
+          >
+          again to translate and insert them.
+        </p>
+      </div>
+
+      <!-- Generate Suggestions Section -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="flex items-center mb-3">
+          <div
+            class="flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full mr-3"
+          >
+            <svg
+              class="w-4 h-4 text-yellow-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              ></path>
+            </svg>
+          </div>
+          <h4 class="font-semibold text-gray-900 text-lg">
+            Generate Suggestions
+          </h4>
+        </div>
+        <p class="text-gray-700 text-sm mb-3 leading-relaxed">
+          Use the "Generate suggestion" button in the bottom-right corner or the
+          keyboard button.
+        </p>
+        <div class="space-y-2">
+          <div class="flex items-start">
+            <div
+              class="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-3 flex-shrink-0"
+            ></div>
+            <p class="text-gray-700 text-sm">
+              Click when you need help completing a sentence
+            </p>
+          </div>
+          <div class="flex items-start">
+            <div
+              class="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-3 flex-shrink-0"
+            ></div>
+            <p class="text-gray-700 text-sm">
+              If you're in an empty word, it will replace that word with the
+              suggestion
+            </p>
+          </div>
+          <div class="flex items-start">
+            <div
+              class="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-3 flex-shrink-0"
+            ></div>
+            <p class="text-gray-700 text-sm">
+              Otherwise, it adds the suggestion at the end of your text
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Other Features Section -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="flex items-center mb-3">
+          <div
+            class="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full mr-3"
+          >
+            <svg
+              class="w-4 h-4 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              ></path>
+            </svg>
+          </div>
+          <h4 class="font-semibold text-gray-900 text-lg">Other Features</h4>
+        </div>
+        <div class="grid grid-cols-1 gap-2">
+          <div class="flex items-start">
+            <div
+              class="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-3 flex-shrink-0"
+            ></div>
+            <p class="text-gray-700 text-sm">
+              Hover over words to see translations and corrections
+            </p>
+          </div>
+          <div class="flex items-start">
+            <div
+              class="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-3 flex-shrink-0"
+            ></div>
+            <p class="text-gray-700 text-sm">
+              Use the virtual keyboard on mobile devices
+            </p>
+          </div>
+          <div class="flex items-start">
+            <div
+              class="w-2 h-2 bg-gray-400 rounded-full mt-2 mr-3 flex-shrink-0"
+            ></div>
+            <p class="text-gray-700 text-sm">
+              Check your vocabulary progress in the sidebar
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro Tip -->
+      <div class="bg-blue-50 rounded-lg p-4">
+        <div class="flex items-center mb-3">
+          <div
+            class="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full mr-3"
+          >
+            <svg
+              class="w-4 h-4 text-blue-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              ></path>
+            </svg>
+          </div>
+          <h4 class="font-semibold text-blue-900 text-lg">Pro Tip</h4>
+        </div>
+        <p class="text-blue-700 text-sm leading-relaxed">
+          Start with simple sentences and gradually introduce more vocabulary.
+          Don't worry if you don't know a word or need to translate it
+          again—with time, it will stick!
+        </p>
+      </div>
+    </div>
+  </Modal>
+
+  <VocabularySidebar :is-open="isVocabularyOpen" @close="closeVocabulary" />
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, computed, watch } from "vue";
+import {
+  ref,
+  nextTick,
+  onMounted,
+  computed,
+  watch,
+  onBeforeUnmount,
+} from "vue";
 import { useCookie, useRoute, navigateTo } from "#app";
 import { onBeforeRouteLeave } from "vue-router";
 import ModularInput from "~/components/ModularInput.vue";
@@ -273,6 +590,7 @@ import CustomKeyboard from "~/components/CustomKeyboard.vue";
 import BaseLayout from "~/layouts/BaseLayout.vue";
 import VocabularySidebar from "~/components/VocabularySidebar.vue";
 import ProgressBar from "~/components/ProgressBar.vue";
+import Modal from "~/components/Modal.vue";
 import { generateRandomId } from "~/utils/misc";
 import { useWords } from "~/composables/useWords";
 import { useTranslateMode } from "~/composables/useTranslateMode";
@@ -312,6 +630,25 @@ const languageFlag = computed(() => {
   return flagMap[targetLanguage.value.id] || "🌍";
 });
 
+const isKeyboardVisible = ref(false);
+
+const updateKeyboardVisibility = () => {
+  if (process.client) {
+    isKeyboardVisible.value = window.innerWidth < 768;
+  }
+};
+
+onMounted(() => {
+  updateKeyboardVisibility();
+  window.addEventListener("resize", updateKeyboardVisibility);
+});
+
+onBeforeUnmount(() => {
+  if (process.client) {
+    window.removeEventListener("resize", updateKeyboardVisibility);
+  }
+});
+
 const modularInputRef = ref();
 
 const { wordGoal } = useSettings();
@@ -319,6 +656,8 @@ const { wordGoal } = useSettings();
 const currentFocusIdx = ref(-1);
 
 const isVocabularyOpen = ref(false);
+
+const isHelpModalOpen = ref(false);
 
 const translateStartedOnEmpty = ref(false);
 
@@ -599,6 +938,19 @@ function handleVirtualKeyPress(key: string) {
 }
 
 async function handleTab(idx: number) {
+  // Check if user is currently focused in an input field
+  const activeElement = document.activeElement;
+  const isFocusedInInput = activeElement && activeElement.tagName === "INPUT";
+
+  // If not focused in an input, focus on the last word
+  if (!isFocusedInInput && words.value.length > 0) {
+    await nextTick();
+    modularInputRef.value?.focusOn(words.value.length - 1);
+    currentFocusIdx.value = words.value.length - 1;
+    return;
+  }
+
+  // Otherwise, proceed with translate mode logic
   if (!translateComp.state.value.translateMode) {
     translateStartedOnEmpty.value = words.value[idx]?.text.trim() === "";
     await translateComp.actions.toggleTranslateMode(modularInputRef);
@@ -653,17 +1005,15 @@ async function handleSuggest() {
 
   isGeneratingSuggestion.value = true;
 
-  // Check if the current word is empty and delete it
+  // Check if the current word is empty - we'll replace it with the suggestion
   const currentIdx = currentFocusIdx.value;
-  if (
+  const isCurrentWordEmpty =
     currentIdx >= 0 &&
     currentIdx < words.value.length &&
-    words.value[currentIdx].text.trim() === ""
-  ) {
-    words.value.splice(currentIdx, 1);
-  }
+    words.value[currentIdx].text.trim() === "";
 
-  // Add a temporary "generating" word
+  // Add a temporary "generating" word at the position where we'll insert the suggestion
+  const insertIdx = isCurrentWordEmpty ? currentIdx : words.value.length;
   const tempWord: Word = {
     id: generateRandomId(),
     text: $t("generatingSuggestion"),
@@ -671,7 +1021,14 @@ async function handleSuggest() {
     correction: null,
     translation: null,
   };
-  words.value.push(tempWord);
+
+  if (isCurrentWordEmpty) {
+    // Replace the empty word with the temp word
+    words.value.splice(currentIdx, 1, tempWord);
+  } else {
+    // Add the temp word at the end
+    words.value.push(tempWord);
+  }
 
   const currentText = words.value
     .slice(0, -1)
@@ -693,7 +1050,7 @@ async function handleSuggest() {
         completion = completion.substring(currentText.length).trim();
       }
       // Remove the temporary word
-      words.value.pop();
+      words.value.splice(insertIdx, 1);
 
       // Split the completion into words and add them
       const newWords = completion
@@ -710,27 +1067,14 @@ async function handleSuggest() {
           correction: null,
           translation: null,
         }));
-        // Check if the last word is empty and replace it if so, otherwise add at the end
-        const lastWord = words.value[words.value.length - 1];
-        const insertIdx =
-          lastWord && lastWord.text.trim() === ""
-            ? words.value.length - 1
-            : words.value.length;
-        const shouldReplace = lastWord && lastWord.text.trim() === "";
-        if (shouldReplace) {
-          words.value.splice(insertIdx, 1, ...wordsToAdd);
-        } else {
-          words.value.splice(insertIdx, 0, ...wordsToAdd);
-        }
+        // Insert the new words at the position where the temp word was
+        words.value.splice(insertIdx, 0, ...wordsToAdd);
         // Focus on the last added word by ID to avoid index/ref issues
         const lastWordId = wordsToAdd[wordsToAdd.length - 1].id;
         modularInputRef.value?.focusOnEndById(lastWordId);
         // Process the new words
         const fullText = words.value.map((w) => w.text).join(" ");
-        const startProcessIdx = shouldReplace
-          ? words.value.length - wordsToAdd.length
-          : words.value.length - wordsToAdd.length;
-        for (let i = startProcessIdx; i < words.value.length; i++) {
+        for (let i = insertIdx; i < insertIdx + wordsToAdd.length; i++) {
           if (words.value[i]) {
             processWord(words.value[i]!.id, fullText);
           }
@@ -738,12 +1082,12 @@ async function handleSuggest() {
       }
     } else {
       // No completion, remove temp word
-      words.value.pop();
+      words.value.splice(insertIdx, 1);
     }
   } catch (error) {
     console.error("Error getting suggestion:", error);
     // Remove temp word on error
-    words.value.pop();
+    words.value.splice(insertIdx, 1);
   } finally {
     isGeneratingSuggestion.value = false;
   }

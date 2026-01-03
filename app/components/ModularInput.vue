@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-wrap justify-center max-w-[800px] max-h-96 overflow-y-auto"
+    class="flex flex-wrap justify-center max-w-[800px] max-h-96 overflow-y-auto relative"
     :class="{ 'animate-pulse': props.isCheckingSentence }"
     @keydown.stop="handleKeyDown"
   >
@@ -93,10 +93,10 @@
             ? 'sentence'
             : 'translation'
         "
-        :enabled="!!(word.correction || word.sentenceError || word.translation)"
-        :class="{
-          'opacity-100': hoveredIdx === idx || touchActivatedIdx === idx,
-        }"
+        :enabled="
+          !!(word.correction || word.sentenceError || word.translation) &&
+          (hoveredIdx === idx || touchActivatedIdx === idx)
+        "
         @applyCorrection="applyCorrection(idx)"
         @applySentenceCorrection="handleApplySentenceCorrection"
         @deleteWord="handleDeleteWord(idx)"
@@ -409,6 +409,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
       }
     } else if (event.key === "Tab") {
       // Call handleTab for tab in translate mode
+      event.preventDefault();
       handleTab();
     } else {
       // Insert the key (including space)
