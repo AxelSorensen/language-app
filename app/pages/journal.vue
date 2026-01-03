@@ -307,6 +307,7 @@ const languageFlag = computed(() => {
     ru: "🇷🇺",
     ar: "🇸🇦",
     hi: "🇮🇳",
+    da: "🇩🇰",
   };
   return flagMap[targetLanguage.value.id] || "🌍";
 });
@@ -389,40 +390,42 @@ const currentSentence = computed(() => {
   if (idx < 0) return "";
   // Find the sentence containing the focused word
   let start = idx;
-  // Go back to find the start of the sentence (after a dot or question mark)
+  // Go back to find the start of the sentence (after a dot, question mark, or exclamation mark)
   while (start > 0) {
     const prevWord = wordList[start - 1];
     if (
       !prevWord ||
       prevWord.text == null ||
       prevWord.text.endsWith(".") ||
-      prevWord.text.endsWith("?")
+      prevWord.text.endsWith("?") ||
+      prevWord.text.endsWith("!")
     ) {
       break;
     }
     start--;
   }
   let end = idx;
-  // Go forward to find the end of the sentence (before a dot or question mark, but include up to the dot/question mark)
+  // Go forward to find the end of the sentence (before a dot, question mark, or exclamation mark, but include up to the punctuation)
   while (end < wordList.length - 1) {
     const currentWord = wordList[end];
     if (
       !currentWord ||
       currentWord.text == null ||
       currentWord.text.endsWith(".") ||
-      currentWord.text.endsWith("?")
+      currentWord.text.endsWith("?") ||
+      currentWord.text.endsWith("!")
     ) {
       break;
     }
     end++;
   }
-  // Include the dot or question mark if present
+  // Include the dot, question mark, or exclamation mark if present
   if (end < wordList.length - 1) {
     const nextWord = wordList[end + 1];
     if (
       nextWord &&
       nextWord.text != null &&
-      (nextWord.text === "." || nextWord.text === "?")
+      (nextWord.text === "." || nextWord.text === "?" || nextWord.text === "!")
     ) {
       end++;
     }
@@ -650,6 +653,16 @@ async function handleSuggest() {
 
   isGeneratingSuggestion.value = true;
 
+  // Check if the current word is empty and delete it
+  const currentIdx = currentFocusIdx.value;
+  if (
+    currentIdx >= 0 &&
+    currentIdx < words.value.length &&
+    words.value[currentIdx].text.trim() === ""
+  ) {
+    words.value.splice(currentIdx, 1);
+  }
+
   // Add a temporary "generating" word
   const tempWord: Word = {
     id: generateRandomId(),
@@ -697,19 +710,27 @@ async function handleSuggest() {
           correction: null,
           translation: null,
         }));
-        // Add words using splice instead of replacing the array to avoid ref issues
-        const insertIdx = words.value.length;
-        words.value.splice(insertIdx, 0, ...wordsToAdd);
+        // Check if the last word is empty and replace it if so, otherwise add at the end
+        const lastWord = words.value[words.value.length - 1];
+        const insertIdx =
+          lastWord && lastWord.text.trim() === ""
+            ? words.value.length - 1
+            : words.value.length;
+        const shouldReplace = lastWord && lastWord.text.trim() === "";
+        if (shouldReplace) {
+          words.value.splice(insertIdx, 1, ...wordsToAdd);
+        } else {
+          words.value.splice(insertIdx, 0, ...wordsToAdd);
+        }
         // Focus on the last added word by ID to avoid index/ref issues
         const lastWordId = wordsToAdd[wordsToAdd.length - 1].id;
         modularInputRef.value?.focusOnEndById(lastWordId);
         // Process the new words
         const fullText = words.value.map((w) => w.text).join(" ");
-        for (
-          let i = words.value.length - wordsToAdd.length;
-          i < words.value.length;
-          i++
-        ) {
+        const startProcessIdx = shouldReplace
+          ? words.value.length - wordsToAdd.length
+          : words.value.length - wordsToAdd.length;
+        for (let i = startProcessIdx; i < words.value.length; i++) {
           if (words.value[i]) {
             processWord(words.value[i]!.id, fullText);
           }

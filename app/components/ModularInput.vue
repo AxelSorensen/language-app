@@ -231,12 +231,14 @@ const saveSelection = (idx: number) => {
   touchActivatedIdx.value = null;
   // Start typing timeout for processing
   if (typingTimeout.value) clearTimeout(typingTimeout.value);
+  const wordId = words.value[idx].id;
+  const currentFullText = words.value.map((w) => w.text).join(" ");
   typingTimeout.value = setTimeout(() => {
     emit("typing-timeout", {
-      id: words.value[idx].id,
-      fullText: words.value.map((w) => w.text).join(" "),
+      id: wordId,
+      fullText: currentFullText,
     });
-  }, 500); // Process after 1 second of inactivity
+  }, 800); // Process after 800ms of inactivity
 };
 
 const handleSpace = (inputEl: HTMLInputElement, idx: number) => {
@@ -451,6 +453,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
     emit("sentence-end");
   } else if (event.key === "?") {
     emit("sentence-end");
+  } else if (event.key === "!") {
+    emit("sentence-end");
   } else if (event.key === "Suggest") {
     emit("suggest");
   }
@@ -606,6 +610,7 @@ const focusOnEndById = (id: string) => {
 
 const handleMouseEnter = (idx: number) => {
   hoveredIdx.value = idx;
+  touchActivatedIdx.value = null; // Close any click-activated tooltip when hovering
   tooltipRefs.value[idx]?.adjustPosition();
 };
 

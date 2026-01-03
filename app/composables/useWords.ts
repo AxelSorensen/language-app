@@ -1,5 +1,5 @@
 import { useState, useCookie } from "#app";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { LanguageService } from "~/services/LanguageService";
 import { generateRandomId } from "~/utils/misc";
 import { useVocabulary } from "~/composables/useVocabulary";
@@ -27,6 +27,11 @@ export const useWords = (id?: string) => {
   const hasText = computed(() => words.value.some((w) => w.text.trim() !== ""));
 
   const abortControllers = ref<Map<string, AbortController>>(new Map());
+
+  // Clear cache when language changes
+  watch(() => targetLanguage.value.id, () => {
+    // Cache cleared when language changes (no longer needed)
+  });
 
   const cancelWordProcessing = (id: string) => {
     const controller = abortControllers.value.get(id);
@@ -95,20 +100,6 @@ export const useWords = (id?: string) => {
     // Skip processing if already checked (e.g., suggested words)
     if (word.status === "checked") return;
 
-    // Clean the word by removing commas and dots, and make lowercase
-    const cleanedWordText = word.text.toLowerCase().replace(/[,.]/g, "").trim();
-
-    if (!fullText.trim() && words.value.length > 1) {
-      words.value = [];
-      return;
-    }
-
-    // Cancel any existing processing for this word
-    // cancelWordProcessing(id);
-
-    const controller = new AbortController();
-    abortControllers.value.set(id, controller);
-
     const updateWord = (updater: (w: Word) => Word) => {
       const index = words.value.findIndex((w) => w.id === id);
       if (index !== -1) {
@@ -118,6 +109,23 @@ export const useWords = (id?: string) => {
         }
       }
     };
+
+    // Skip processing punctuation-only words
+    if (/^[!?.,;:()[\]{}"']+$/.test(word.text.trim())) {
+      updateWord((w) => ({ ...w, status: "checked" }));
+      return;
+    }
+
+    // Clean the word by removing all punctuation for processing
+    const cleanedWordText = word.text.toLowerCase().replace(/[!?.,;:()[\]{}"'\-]/g, "").trim();
+
+    if (!fullText.trim() && words.value.length > 1) {
+      words.value = [];
+      return;
+    }
+
+    const controller = new AbortController();
+    abortControllers.value.set(id, controller);
 
     updateWord((w) => ({ ...w, status: "pending" }));
 

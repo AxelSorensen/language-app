@@ -14,40 +14,26 @@ export default defineEventHandler(async (event) => {
   const extraInstruction =
     getLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
 
-  const prompt = `You are a language assistant helping ${targetLanguage} learners.
+  const prompt = `Check this ${targetLanguage} sentence for basic grammar errors and missing accent marks.
 
-Check this ${targetLanguage} sentence for GRAMMAR errors only. IGNORE spelling mistakes, typos, or incorrect words that are just misspelled. Only flag grammatical issues like:
+Focus on obvious errors like:
+- Wrong verb forms (e.g., "ella puedo" → "ella puede")
+- Missing/incorrect articles (e.g., "la casa" → "el casa" for masculine)
+- Subject-verb agreement (e.g., "ellos es" → "ellos son")
+- Missing accent marks that change meaning or are required (e.g., "que" → "qué", "como" → "cómo", "tu" → "tú")
 
-- Incorrect verb conjugations or tenses
-- Wrong word order
-- Missing or incorrect articles/prepositions
-- Subject-verb agreement errors
-- Incorrect gender/number agreement
-- Wrong case usage (if applicable)
-
-Do NOT flag:
-- Misspelled words (e.g., "hola" written as "ola")
-- Wrong words that are correctly spelled but incorrect for the context
-- Punctuation issues
-
-Return the wrong words and their correction. Return the exact text from the sentence that has grammatical errors and what it should be.
+IGNORE:
+- Spelling mistakes (use spell-check for that)
+- Word choice errors
+- Punctuation
+- Complex grammar rules
 
 Return:
 - type: "valid" | "correction"
-- wrong_text: the exact wrong words if type is "correction", otherwise empty string
-- correction: what it should be if type is "correction", otherwise empty string
+- wrong_text: exact wrong words from sentence
+- correction: what it should be
 
-Examples of GRAMMAR errors to flag:
-- "ella puedo hablar" → wrong_text: "puedo", correction: "puede"
-- "ella puedo hablo" → wrong_text: "puedo hablo", correction: "puede hablar"
-- "yo voy a la casa" → wrong_text: "voy a la", correction: "voy al"
-
-Examples of what NOT to flag (spelling/typos):
-- "hola" written as "ola" → ignore
-- "casa" written as "caza" → ignore
-- Using "perro" instead of "gato" → ignore
-
-If there are no grammar errors, return empty strings for all fields.
+If no obvious grammar errors or missing accents, return type "valid" with empty strings.
 
 ${extraInstruction ? `- ${extraInstruction}` : ""}`;
 

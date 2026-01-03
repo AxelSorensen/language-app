@@ -245,25 +245,6 @@ const adjustPosition = () => {
         transform,
         arrowLeft: `${arrowLeftPercent}%`,
       };
-      // Adjust top based on actual height to keep arrow pointing correctly
-      setTimeout(() => {
-        const newRect = tooltipRef.value?.getBoundingClientRect();
-        if (newRect && parentRect) {
-          let adjustedTop;
-          if (direction.value === "top") {
-            adjustedTop = parentRect.top - newRect.height;
-          } else {
-            adjustedTop = parentRect.bottom + 6;
-          }
-          const clampedTop = Math.max(
-            padding,
-            Math.min(adjustedTop, viewportHeight - newRect.height - padding)
-          );
-          if (clampedTop !== parseFloat(tooltipStyle.value.top)) {
-            tooltipStyle.value.top = `${clampedTop}px`;
-          }
-        }
-      }, 0);
     }
   });
 };

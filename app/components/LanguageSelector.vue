@@ -31,25 +31,24 @@
           v-for="lang in languages"
           :key="lang.id"
           @click="selectLanguage(lang)"
-          class="w-full text-left px-4 py-3 hover:bg-gray-100 rounded-lg flex items-center gap-3 transition-colors"
+          class="w-full text-left px-4 py-3 rounded-lg flex items-center transition-colors"
           :class="{
             'bg-blue-50 border border-blue-200': targetLanguage.id === lang.id,
+            'hover:bg-gray-100': targetLanguage.id !== lang.id,
           }"
         >
-          <span class="text-xl">{{ getFlag(lang.id) }}</span>
-          <span class="font-medium">{{ lang.name }}</span>
-          <span
-            v-if="targetLanguage.id === lang.id"
-            class="ml-auto text-blue-500"
-          >
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fill-rule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clip-rule="evenodd"
-              ></path>
-            </svg>
-          </span>
+          <div class="flex items-center gap-3 flex-1">
+            <span class="text-xl">{{ getFlag(lang.id) }}</span>
+            <span class="font-medium">{{ lang.name }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              v-if="!hasSpellchecker(lang.id)"
+              class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium"
+            >
+              Beta
+            </span>
+          </div>
         </button>
       </div>
     </Modal>
@@ -98,6 +97,11 @@ function getFlag(id) {
     ar: "🇸🇦",
   };
   return flags[id] || "🏳️";
+}
+
+function hasSpellchecker(id) {
+  const languagesWithSpellchecker = ["en", "es", "da", "de", "fr", "it", "pt"];
+  return languagesWithSpellchecker.includes(id);
 }
 
 function selectLanguage(lang) {

@@ -15,6 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const extraInstruction =
     getWordLanguageInstructions(sourceLanguage)[targetLanguageId] || "";
+
   // Construct prompt for translation
   const prompt = `You are a translation assistant. Translate the specified word: "${word}" from ${targetLanguage} to ${sourceLanguage}, considering the context: "${context}".
 
@@ -26,7 +27,7 @@ IMPORTANT RULES:
 - Provide translation for known words in context.
 - Set translation to "unknown" only if the word is genuinely unrecognized or has multiple meanings that can't be disambiguated.
 - Prefer providing translation over marking as unknown.
-- Preserve punctuation: include trailing commas, periods, etc., in the translation if present in the original word.
+- Do not include punctuation in the translation; translate only the word content.
 
 Return a JSON object.`;
   const input = word;
