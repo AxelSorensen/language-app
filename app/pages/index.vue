@@ -397,54 +397,31 @@
     />
 
     <!-- Delete Confirmation Modal -->
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      @click="cancelDelete"
+    <Modal
+      :is-open="showDeleteModal"
+      :title="$t('deleteEntry')"
+      @close="cancelDelete"
     >
-      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" @click.stop>
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">{{ $t("deleteEntry") }}</h3>
-          <button
-            @click="cancelDelete"
-            class="text-gray-400 hover:text-gray-600"
-          >
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <p class="text-gray-700 mb-6">
-          {{ $t("deleteConfirmationPrefix") }}
-          <strong>{{ formatDate(entryToDelete.createdAt) }}</strong
-          >{{ $t("deleteConfirmationSuffix") }}
-        </p>
-        <div class="flex justify-end space-x-3">
-          <button
-            @click="cancelDelete"
-            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            {{ $t("cancel") }}
-          </button>
-          <button
-            @click="confirmDelete"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
-          >
-            {{ $t("delete") }}
-          </button>
-        </div>
+      <p class="text-gray-700 mb-6">
+        {{ $t("deleteConfirmationPrefix") }}
+        <strong>{{ formatDate(entryToDelete?.createdAt) }}</strong
+        >{{ $t("deleteConfirmationSuffix") }}
+      </p>
+      <div class="flex justify-end space-x-3">
+        <button
+          @click="cancelDelete"
+          class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+        >
+          {{ $t("cancel") }}
+        </button>
+        <button
+          @click="confirmDelete"
+          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+        >
+          {{ $t("delete") }}
+        </button>
       </div>
-    </div>
+    </Modal>
   </div>
 </template>
 
@@ -454,6 +431,7 @@ import { useCookie } from "#app";
 import LanguageSelector from "~/components/LanguageSelector.vue";
 import ProgressBar from "~/components/ProgressBar.vue";
 import SettingsModal from "~/components/SettingsModal.vue";
+import Modal from "~/components/Modal.vue";
 import { WORD_GOAL } from "~/constants";
 import { useEntries } from "~/composables/useEntries";
 import { useSettings } from "~/composables/useSettings";

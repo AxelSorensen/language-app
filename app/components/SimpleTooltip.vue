@@ -32,8 +32,6 @@
     @click="
       type === 'correction' && text !== 'null'
         ? $emit('applyCorrection')
-        : type === 'unknown'
-        ? $emit('deleteWord')
         : type === 'sentence'
         ? $emit('applySentenceCorrection')
         : null

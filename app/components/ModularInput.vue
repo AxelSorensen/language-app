@@ -9,7 +9,8 @@
       :key="word.id"
       class="relative group"
       @mouseenter="handleMouseEnter(idx)"
-      @mouseleave="hoveredIdx = null"
+      @mouseleave="handleMouseLeave(idx)"
+      @click="handleClick(idx)"
     >
       <input
         v-if="word.text !== '' || (!props.translateMode && !isTranslating)"
@@ -98,11 +99,14 @@
             : 'translation'
         "
         :enabled="!!(word.correction || word.sentenceError || word.translation)"
-        :class="{ 'opacity-100': hoveredIdx === idx }"
+        :class="{ 'opacity-100': hoveredIdx === idx || clickedIdx === idx }"
         @applyCorrection="applyCorrection(idx)"
         @applySentenceCorrection="handleApplySentenceCorrection"
         @deleteWord="handleDeleteWord(idx)"
-        @close="hoveredIdx = null"
+        @close="
+          hoveredIdx = null;
+          clickedIdx = null;
+        "
       />
     </div>
   </div>
@@ -168,6 +172,8 @@ const translateInputRef = ref<HTMLInputElement>();
 const currentFocusedIdx = ref(0);
 
 const hoveredIdx = ref<number | null>(null);
+
+const clickedIdx = ref<number | null>(null);
 
 const inputsRefs = ref<HTMLInputElement[]>([]);
 const setInputRef = (idx: number, el: HTMLInputElement | null) => {
@@ -237,6 +243,7 @@ const saveSelection = (idx: number) => {
   words.value[idx].translation = null;
   // Close any open tooltips when typing
   hoveredIdx.value = null;
+  clickedIdx.value = null;
   // Start typing timeout for processing
   if (typingTimeout.value) clearTimeout(typingTimeout.value);
   typingTimeout.value = setTimeout(() => {
@@ -617,6 +624,19 @@ const focusOnEndById = (id: string) => {
 const handleMouseEnter = (idx: number) => {
   hoveredIdx.value = idx;
   tooltipRefs.value[idx]?.adjustPosition();
+};
+
+const handleMouseLeave = (idx: number) => {
+  if (clickedIdx.value !== idx) {
+    hoveredIdx.value = null;
+  }
+};
+
+const handleClick = (idx: number) => {
+  clickedIdx.value = clickedIdx.value === idx ? null : idx;
+  if (clickedIdx.value === idx) {
+    tooltipRefs.value[idx]?.adjustPosition();
+  }
 };
 
 defineExpose({
