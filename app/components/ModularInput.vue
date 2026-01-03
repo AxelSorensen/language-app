@@ -112,6 +112,7 @@ import SimpleTooltip from "~/components/SimpleTooltip.vue";
 import { useState } from "#app";
 import { generateRandomId } from "~/utils/misc";
 import type { Word } from "~/types";
+import { useKeyboard } from "~/composables/useKeyboard";
 
 interface Props {
   translateMode?: boolean;
@@ -170,6 +171,8 @@ const tooltipRefs = ref<any[]>([]);
 const lastSelection = ref<{ idx: number; start: number; end: number } | null>(
   null
 );
+
+const { state: keyboardState } = useKeyboard();
 
 watch(
   [() => props.translateMode, () => props.isTranslating],
@@ -443,6 +446,11 @@ const handleKeyDown = (event: KeyboardEvent) => {
   } else if (event.key === " ") {
     if (!props.translateMode) {
       event.preventDefault();
+      // Activate caps lock for new sentence if post-sentence flag is set
+      if (keyboardState.value.postSentence) {
+        keyboardState.value.isCapsLock = true;
+        keyboardState.value.postSentence = false;
+      }
       handleSpace(inputEl, currentFocusedIdx.value);
     }
   } else if (event.key === "Backspace") {

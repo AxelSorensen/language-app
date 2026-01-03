@@ -663,6 +663,7 @@ import { FirestoreRepository } from "~/repositories/FirestoreRepository";
 import { useVocabulary } from "~/composables/useVocabulary";
 import type { Word } from "~/types";
 import { useSettings } from "~/composables/useSettings";
+import { useKeyboard } from "~/composables/useKeyboard";
 
 definePageMeta({
   layout: "base-layout",
@@ -771,6 +772,8 @@ const {
   loadVocabularyFromFirestore,
   vocabulary,
 } = useVocabulary();
+
+const { state: keyboardState } = useKeyboard();
 
 const today = computed(() => {
   const route = useRoute();
@@ -1062,6 +1065,8 @@ function handleTypingTimeout(data: { id: string; fullText: string }) {
 
 function handleCheckSentence() {
   checkSentence();
+  // Mark that we're ready to capitalize the next sentence
+  keyboardState.value.postSentence = true;
 }
 
 async function handleSuggest() {

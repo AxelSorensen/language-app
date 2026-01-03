@@ -2,6 +2,7 @@ import { ref, nextTick, computed } from "vue";
 
 export interface KeyboardState {
   isCapsLock: Ref<boolean>;
+  postSentence: Ref<boolean>;
 }
 
 export interface KeyboardActions {
@@ -17,6 +18,7 @@ export function useKeyboard(): KeyboardComposable {
   // State
   const state = useState("keyboard-state", () => ({
     isCapsLock: false,
+    postSentence: false,
   }));
 
   const pressKey = (button: string) => {

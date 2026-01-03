@@ -40,8 +40,10 @@
         :pressed="pressedKeys.has('Shift')"
         :buttonClass="[
           'keyboard-key flex-[1.5] min-w-0 font-medium py-3 sm:py-4 text-base sm:text-lg rounded-md transition-all duration-150 border shadow-sm',
-          keyboardState.isCapsLock
-            ? 'bg-gray-800 active:bg-black text-white border-gray-600'
+          isPermanentCaps
+            ? 'bg-gray-700 active:bg-gray-900 text-white border-gray-600'
+            : keyboardState.isCapsLock
+            ? 'bg-gray-300 active:bg-gray-500 text-white border-gray-400'
             : 'bg-gray-100 active:bg-gray-300 text-gray-700 border-gray-300',
           pressedKeys.has('Shift') ? 'bg-gray-400' : '',
         ]"
