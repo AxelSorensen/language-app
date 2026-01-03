@@ -15,7 +15,9 @@
             <ProgressBar :current="wordCount" :goal="wordGoal" height="h-3" />
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600 whitespace-nowrap">{{ wordCount }}/{{ wordGoal }} {{ $t("words") }}</span>
+            <span class="text-sm text-gray-600 whitespace-nowrap"
+              >{{ wordCount }}/{{ wordGoal }} {{ $t("words") }}</span
+            >
             <button
               @click="isHelpModalOpen = true"
               class="cursor-pointer px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center"
