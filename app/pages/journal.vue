@@ -940,38 +940,33 @@ async function loadEntry() {
       await getAllEntries();
     }
 
-    // Check if an entry already exists for today
-    const existingTodayEntry = entries.value.find(
-      (e) =>
-        e.createdAt &&
-        !isNaN(new Date(e.createdAt).getTime()) &&
-        (() => {
-          const createdDate = new Date(e.createdAt);
-          const year = createdDate.getFullYear();
-          const month = String(createdDate.getMonth() + 1).padStart(2, "0");
-          const day = String(createdDate.getDate()).padStart(2, "0");
-          return `${year}-${month}-${day}`;
-        })() === today.value
-    );
-
-    if (existingTodayEntry && existingTodayEntry.id !== entryId) {
-      // Redirect to the existing entry for today
-      await navigateTo(`/journal?id=${existingTodayEntry.id}`, {
-        replace: true,
-      });
-      return;
-    }
-
-    const entry = await loadEntryFromFirestore(entryId);
-    if (entry) {
+    // Check if the requested entry is already in local state
+    const existingEntry = entries.value.find((e) => e.id === entryId);
+    if (existingEntry) {
       // Load words if the entry has them
-      if (entry.words && entry.words.length > 0) {
-        words.value = entry.words;
+      if (existingEntry.words && existingEntry.words.length > 0) {
+        words.value = existingEntry.words;
       }
       // If entry.words is empty, words are already cleared
     } else {
-      // Entry not found: Create new entry (words are already cleared)
-      await createJournalEntry(entryId);
+      // Entry not in local state, load from Firestore
+      try {
+        const entry = await loadEntryFromFirestore(entryId);
+        if (entry) {
+          // Load words if the entry has them
+          if (entry.words && entry.words.length > 0) {
+            words.value = entry.words;
+          }
+          // If entry.words is empty, words are already cleared
+        } else {
+          // Entry not found: Create new entry (words are already cleared)
+          await createJournalEntry(entryId);
+        }
+      } catch (error) {
+        console.error("Error loading entry:", error);
+        // Entry not found or error loading: Create new entry (words are already cleared)
+        await createJournalEntry(entryId);
+      }
     }
   } else {
     await navigateTo("/");

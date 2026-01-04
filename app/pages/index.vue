@@ -598,49 +598,7 @@ const chartData = computed(() => {
   return cumulativeData;
 });
 const streak = computed(() => {
-  const completedDates = entries.value
-    .filter(
-      (entry) =>
-        entry.createdAt &&
-        !isNaN(new Date(entry.createdAt).getTime()) &&
-        entry.wordCount >= wordGoal.value
-    )
-    .map((entry) => {
-      const createdDate = new Date(entry.createdAt!);
-      const year = createdDate.getFullYear();
-      const month = String(createdDate.getMonth() + 1).padStart(2, "0");
-      const day = String(createdDate.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    })
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-  if (completedDates.length === 0) return 0;
-
-  // Check if today has a completed entry
-  const todayStr = today.value;
-  if (!completedDates.includes(todayStr)) return 0;
-
-  // Count consecutive days backward from today
-  let streakCount = 1;
-  let currentDate = new Date(todayStr);
-
-  for (let i = 1; i < completedDates.length; i++) {
-    currentDate.setDate(currentDate.getDate() - 1);
-    const expectedDate = (() => {
-      const year = currentDate.getFullYear();
-      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-      const day = String(currentDate.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    })();
-
-    if (completedDates.includes(expectedDate)) {
-      streakCount++;
-    } else {
-      break;
-    }
-  }
-
-  return streakCount;
+  return entries.value.length;
 });
 function formatDate(date: string | undefined): string {
   if (!date) return "Date not available";
