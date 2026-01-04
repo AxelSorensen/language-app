@@ -762,6 +762,7 @@ const {
   loadEntry: loadEntryFromFirestore,
   createJournalEntry,
   updateEntry,
+  getAllEntries,
 } = useEntries();
 
 const firebaseRepo = new FirestoreRepository("journal_entries");
@@ -934,6 +935,33 @@ async function loadEntry() {
   const entryId = route.query.id as string;
 
   if (entryId) {
+    // First, ensure we have all entries loaded
+    if (entries.value.length === 0) {
+      await getAllEntries();
+    }
+
+    // Check if an entry already exists for today
+    const existingTodayEntry = entries.value.find(
+      (e) =>
+        e.createdAt &&
+        !isNaN(new Date(e.createdAt).getTime()) &&
+        (() => {
+          const createdDate = new Date(e.createdAt);
+          const year = createdDate.getFullYear();
+          const month = String(createdDate.getMonth() + 1).padStart(2, "0");
+          const day = String(createdDate.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        })() === today.value
+    );
+
+    if (existingTodayEntry && existingTodayEntry.id !== entryId) {
+      // Redirect to the existing entry for today
+      await navigateTo(`/journal?id=${existingTodayEntry.id}`, {
+        replace: true,
+      });
+      return;
+    }
+
     const entry = await loadEntryFromFirestore(entryId);
     if (entry) {
       // Load words if the entry has them

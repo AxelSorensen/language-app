@@ -21,18 +21,18 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Connect to Firestore emulator in development/test environments
-if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
-  console.log("🔥 Attempting to connect to Firestore emulator...");
-  try {
-    connectFirestoreEmulator(db, "localhost", 8080);
-    console.log("✅ Firestore emulator connected successfully");
-  } catch (error) {
-    console.warn(
-      "⚠️ Firestore emulator not available, using production Firestore:",
-      error.message
-    );
-    // Continue with production Firestore
-  }
-}
+// if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+//   console.log("🔥 Attempting to connect to Firestore emulator...");
+//   try {
+//     connectFirestoreEmulator(db, "localhost", 8080);
+//     console.log("✅ Firestore emulator connected successfully");
+//   } catch (error) {
+//     console.warn(
+//       "⚠️ Firestore emulator not available, using production Firestore:",
+//       error.message
+//     );
+//     // Continue with production Firestore
+//   }
+// }
 
 export { app, db };

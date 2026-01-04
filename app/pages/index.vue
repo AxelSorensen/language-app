@@ -499,9 +499,9 @@ function hasSpellchecker(id) {
 
 const today = computed(() => {
   const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(now.getUTCDate()).padStart(2, "0");
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 });
 
@@ -522,9 +522,9 @@ const todayEntry = computed(
         !isNaN(new Date(e.createdAt).getTime()) &&
         (() => {
           const createdDate = new Date(e.createdAt);
-          const year = createdDate.getUTCFullYear();
-          const month = String(createdDate.getUTCMonth() + 1).padStart(2, "0");
-          const day = String(createdDate.getUTCDate()).padStart(2, "0");
+          const year = createdDate.getFullYear();
+          const month = String(createdDate.getMonth() + 1).padStart(2, "0");
+          const day = String(createdDate.getDate()).padStart(2, "0");
           return `${year}-${month}-${day}`;
         })() === today.value
     ) || null
@@ -538,12 +538,9 @@ const previousEntries = computed(() => {
       const entryDate = entry.createdAt
         ? (() => {
             const createdDate = new Date(entry.createdAt!);
-            const year = createdDate.getUTCFullYear();
-            const month = String(createdDate.getUTCMonth() + 1).padStart(
-              2,
-              "0"
-            );
-            const day = String(createdDate.getUTCDate()).padStart(2, "0");
+            const year = createdDate.getFullYear();
+            const month = String(createdDate.getMonth() + 1).padStart(2, "0");
+            const day = String(createdDate.getDate()).padStart(2, "0");
             return `${year}-${month}-${day}`;
           })()
         : null;
