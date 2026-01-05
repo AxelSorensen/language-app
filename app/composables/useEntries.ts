@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import type { Word } from "~/types";
 import { FirestoreRepository } from "~/repositories/FirestoreRepository";
 import { useSettings } from "~/composables/useSettings";
@@ -15,11 +15,19 @@ export interface DiaryEntry {
 
 const firebaseRepo = new FirestoreRepository<DiaryEntry>("journal_entries");
 
-export function useEntries() {
-  const entries = useState<DiaryEntry[]>("journal-entries", () => []);
+// Global cache for entries per language
+const entriesCache = ref<Record<string, DiaryEntry[]>>({});
+
+export function useEntries(languageId?: string) {
   const { targetLanguage: settingsTargetLanguage } = useSettings();
   const currentTargetLanguage = computed(() => settingsTargetLanguage.value.id);
   const loading = ref(false);
+
+  // Computed entries for the current language
+  const entries = computed(
+    () => entriesCache.value[currentTargetLanguage.value] || []
+  );
+
   const createJournalEntry = async (id: string): Promise<void> => {
     try {
       const entryData: Omit<DiaryEntry, "id"> = {
@@ -32,7 +40,8 @@ export function useEntries() {
       };
 
       await firebaseRepo.setDoc(id, entryData);
-      entries.value.push({ id, ...entryData });
+      // Refresh the cache by fetching all entries for the current language
+      await getLanguageEntries();
     } catch (error) {
       console.error("❌ Error creating journal entry with ID:", error);
       throw error;
@@ -40,9 +49,12 @@ export function useEntries() {
   };
 
   const updateEntry = (id: string, entry: Partial<DiaryEntry>): void => {
-    const index = entries.value.findIndex((e) => e.id === id);
-    if (index >= 0) {
-      entries.value[index] = { ...entries.value[index], ...entry };
+    const langEntries = entriesCache.value[currentTargetLanguage.value];
+    if (langEntries) {
+      const index = langEntries.findIndex((e) => e.id === id);
+      if (index >= 0) {
+        langEntries[index] = { ...langEntries[index], ...entry };
+      }
     }
   };
 
@@ -54,18 +66,8 @@ export function useEntries() {
         ...cleanEntry,
         updatedAt: new Date().toISOString(),
       });
-      const index = entries.value.findIndex((e) => e.id === id);
-      const savedEntry = {
-        ...cleanEntry,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
-      if (index >= 0) {
-        entries.value[index] = savedEntry;
-      } else {
-        // Entry not in local state, add it
-        entries.value.push(savedEntry);
-      }
+      // Refresh the cache by fetching all entries for the current language
+      await getLanguageEntries();
     } catch (error) {
       console.error("Error saving journal entry:", error);
       throw error;
@@ -74,13 +76,17 @@ export function useEntries() {
 
   const loadEntry = async (id: string): Promise<DiaryEntry | null> => {
     try {
-      const existing = entries.value.find((e) => e.id === id);
-      if (existing) {
-        return existing;
+      const langEntries = entriesCache.value[currentTargetLanguage.value];
+      if (langEntries) {
+        const existing = langEntries.find((e) => e.id === id);
+        if (existing) {
+          return existing;
+        }
       }
       const entry = await firebaseRepo.getById(id);
       if (entry) {
-        entries.value.push(entry);
+        // Refresh the cache by fetching all entries for the current language
+        await getLanguageEntries();
       }
       return entry;
     } catch (error) {
@@ -89,14 +95,21 @@ export function useEntries() {
     }
   };
 
-  const getAllEntries = async (): Promise<DiaryEntry[]> => {
+  const getLanguageEntries = async (): Promise<DiaryEntry[]> => {
+    const lang = currentTargetLanguage.value;
+    // If entries are already cached for the current language, return them
+    if (entriesCache.value[lang]) {
+      console.log("Using cached journal entries for language:", lang);
+      return entriesCache.value[lang];
+    }
+    console.log("Fetching journal entries for language:", lang);
     try {
       loading.value = true;
       const fetchedEntries = await firebaseRepo.query([
         {
           field: "language",
           operator: "==",
-          value: currentTargetLanguage.value,
+          value: lang,
         },
       ]);
       // Ensure all entries have createdAt field
@@ -106,12 +119,12 @@ export function useEntries() {
         wordCount: entry.wordCount || 0,
       }));
 
-      // Update the reactive state
-      entries.value = processedEntries;
+      // Cache the entries
+      entriesCache.value[lang] = processedEntries;
 
       return processedEntries;
     } catch (error) {
-      console.error("Error getting all journal entries:", error);
+      console.error("Error getting journal entries:", error);
       throw error;
     } finally {
       loading.value = false;
@@ -119,40 +132,39 @@ export function useEntries() {
   };
 
   const deleteEntry = async (id: string): Promise<void> => {
-    // Optimistically remove from local state first
-    const index = entries.value.findIndex((e) => e.id === id);
+    const langEntries = entriesCache.value[currentTargetLanguage.value];
+    // Optimistically remove from local state first (optional, for immediate UI update)
     let deletedEntry: DiaryEntry | null = null;
-    if (index >= 0) {
-      deletedEntry = entries.value[index];
-      entries.value.splice(index, 1);
+    if (langEntries) {
+      const index = langEntries.findIndex((e) => e.id === id);
+      if (index >= 0) {
+        deletedEntry = langEntries[index];
+        langEntries.splice(index, 1);
+      }
     }
 
     try {
       await firebaseRepo.delete(id);
+      // Refresh the cache by fetching all entries for the current language
+      await getLanguageEntries();
     } catch (error) {
       console.error("Error deleting journal entry from Firebase:", error);
       // If Firebase deletion fails, add the entry back to local state
-      if (deletedEntry) {
-        entries.value.splice(index, 0, deletedEntry);
+      if (deletedEntry && langEntries) {
+        const index = langEntries.findIndex((e) => e.id === id);
+        langEntries.splice(index, 0, deletedEntry);
       }
       throw error;
     }
   };
 
-  // Watch for language changes and refetch entries
-  watch(currentTargetLanguage, async (newLanguage, oldLanguage) => {
-    if (newLanguage !== oldLanguage) {
-      await getAllEntries();
-    }
-  });
-
   return {
-    entries, // Keep for backward compatibility, but will be deprecated
+    entries,
     loading,
     createJournalEntry,
     saveEntry,
     loadEntry,
-    getAllEntries,
+    getLanguageEntries,
     updateEntry,
     deleteEntry,
   };

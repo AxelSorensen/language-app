@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <div v-if="loading" class="animate-pulse">
+    <div v-if="!dataLoaded || loading" class="animate-pulse">
       <!-- Skeleton for today's journal -->
       <div
         class="mb-6 p-6 bg-gray-100 border border-gray-200 rounded-xl shadow-sm"
@@ -91,7 +91,7 @@
       </div>
     </div>
 
-    <div v-else class="flex-1 flex flex-col">
+    <div v-if="dataLoaded && !loading" class="flex-1 flex flex-col">
       <!-- Today's Journal -->
       <div
         v-if="!todayEntry || (todayEntry.wordCount || 0) < wordGoal"
@@ -294,14 +294,7 @@
                     </h3>
                     <p class="text-sm text-gray-500">
                       {{ entry.wordCount }} {{ $t("words") }} •
-                      {{
-                        entry.words?.filter(
-                          (w) =>
-                            w.firstUsed &&
-                            w.firstUsed.substring(0, 10) ===
-                              entry.createdAt?.substring(0, 10)
-                        ).length || 0
-                      }}
+                      {{ getNewWordsCount(entry) }}
                       {{ $t("newWordsLearned") }}
                     </p>
                   </div>
@@ -333,14 +326,7 @@
                     </h3>
                     <p class="text-sm text-gray-500">
                       {{ todayEntry!.wordCount }} {{ $t("words") }} •
-                      {{
-                        todayEntry!.words?.filter(
-                          (w) =>
-                            w.firstUsed &&
-                            w.firstUsed.substring(0, 10) ===
-                              todayEntry!.createdAt?.substring(0, 10)
-                        ).length || 0
-                      }}
+                      {{ getNewWordsCount(todayEntry!) }}
                       {{ $t("newWordsLearned") }}
                     </p>
                   </div>
@@ -447,11 +433,35 @@ import { navigateTo, useRoute } from "#app";
 import type { Word } from "~/types";
 import type { DiaryEntry } from "~/composables/useEntries";
 import VocabularyChart from "~/components/VocabularyChart.vue";
+import { useVocabulary } from "~/composables/useVocabulary";
 
 const { wordGoal, sourceLanguage, targetLanguage } = useSettings();
 
-const { entries, loading, getAllEntries, createJournalEntry, deleteEntry } =
-  useEntries();
+const {
+  entries,
+  loading,
+  getLanguageEntries,
+  createJournalEntry,
+  deleteEntry,
+} = useEntries(targetLanguage);
+
+const {
+  newWordsCount,
+  clearNewWordsCount,
+  saveVocabularyToFirestore,
+  loadVocabularyFromFirestore,
+  vocabulary,
+} = useVocabulary();
+
+watch(
+  targetLanguage,
+  async () => {
+    if (!entries.value.length) {
+      await getLanguageEntries();
+    }
+  },
+  { deep: true }
+);
 
 const { setLocale, locale } = useI18n();
 
@@ -471,6 +481,8 @@ const justCompleted = ref(false);
 const showDeleteModal = ref(false);
 
 const entryToDelete = ref<DiaryEntry | null>(null);
+
+const dataLoaded = ref(false);
 
 const languageOptions = [
   { id: "en", name: "English" },
@@ -492,7 +504,7 @@ const languages = computed(() => ({
   target: targetLanguage.value.id,
 }));
 
-function hasSpellchecker(id) {
+function hasSpellchecker(id: string) {
   const languagesWithSpellchecker = ["en", "es", "da", "de", "fr", "it", "pt"];
   return languagesWithSpellchecker.includes(id);
 }
@@ -559,24 +571,47 @@ const previousEntries = computed(() => {
 
 // Load all entries on mount
 onMounted(async () => {
-  if (entries.value.length === 0) {
-    await getAllEntries();
-  }
+  await Promise.all([getLanguageEntries(), loadVocabularyFromFirestore()]);
+  dataLoaded.value = true;
   if (route.query.completed === "true") {
     justCompleted.value = true;
     // Clear the query param
     await navigateTo("/", { replace: true });
   }
 });
+
 const chartData = computed(() => {
   const wordMap = new Map<string, number>();
   entries.value.forEach((entry) => {
-    entry.words?.forEach((word) => {
-      if (word.firstUsed) {
-        const date = word.firstUsed.substring(0, 10); // YYYY-MM-DD
-        wordMap.set(date, (wordMap.get(date) || 0) + 1);
-      }
-    });
+    if (entry.language !== targetLanguage.value.id) return;
+    const d = new Date(entry.createdAt);
+    const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+    const count = vocabulary.value.filter(
+      (word) =>
+        word.language === targetLanguage.value.id &&
+        word.addedAt &&
+        (() => {
+          const wd = new Date(word.addedAt);
+          return `${wd.getFullYear()}-${String(wd.getMonth() + 1).padStart(
+            2,
+            "0"
+          )}-${String(wd.getDate()).padStart(2, "0")}`;
+        })() === localDate &&
+        entry.words?.some(
+          (w) =>
+            w.text
+              .replace(/[,.]/g, "")
+              .trim()
+              .toLowerCase()
+              .replace(/[,.]/g, "")
+              .trim()
+              .toLowerCase() === word.word
+        )
+    ).length;
+    wordMap.set(localDate, (wordMap.get(localDate) || 0) + count);
   });
   const sortedData = Array.from(wordMap.entries())
     .map(([date, count]) => ({ date, count }))
@@ -587,9 +622,9 @@ const chartData = computed(() => {
   const cumulativeData = sortedData.map((item) => {
     cumulative += item.count;
     return {
-      date: new Date(item.date).toLocaleDateString(locale.value, {
-        month: "short",
+      date: new Date(item.date + "T12:00:00").toLocaleDateString(locale.value, {
         day: "numeric",
+        month: "short",
       }),
       count: cumulative,
     };
@@ -598,7 +633,7 @@ const chartData = computed(() => {
   return cumulativeData;
 });
 const streak = computed(() => {
-  return entries.value.length;
+  return previousEntries.value.length;
 });
 function formatDate(date: string | undefined): string {
   if (!date) return "Date not available";
@@ -668,11 +703,40 @@ async function startJournal() {
     } else {
       // Create new entry
       const randomId = crypto.randomUUID();
+      createJournalEntry(randomId);
       await navigateTo(`/journal?id=${randomId}`);
     }
   } catch (error) {
     console.error("Error starting journal:", error);
   }
+}
+
+const filteredVocab = computed(() =>
+  vocabulary.value.filter((word) => word.language === targetLanguage.value.id)
+);
+
+function getNewWordsCount(entry: DiaryEntry): number {
+  if (!entry || !entry.createdAt || !entry.id) return 0;
+  const createdAt = entry.createdAt;
+  const d = new Date(createdAt as string);
+  const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(d.getDate()).padStart(2, "0")}`;
+  return filteredVocab.value.filter(
+    (word) =>
+      word.addedAt &&
+      (() => {
+        const wd = new Date(word.addedAt);
+        return `${wd.getFullYear()}-${String(wd.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(wd.getDate()).padStart(2, "0")}`;
+      })() === localDate &&
+      entry.words?.some(
+        (w) => w.text.replace(/[,.]/g, "").trim().toLowerCase() === word.word
+      )
+  ).length;
 }
 </script>
 

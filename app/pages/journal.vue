@@ -762,8 +762,10 @@ const {
   loadEntry: loadEntryFromFirestore,
   createJournalEntry,
   updateEntry,
-  getAllEntries,
-} = useEntries();
+  getLanguageEntries,
+} = useEntries(targetLanguage.value.id);
+
+// Watch for target language changes and reload entries
 
 const firebaseRepo = new FirestoreRepository("journal_entries");
 const {
@@ -937,7 +939,7 @@ async function loadEntry() {
   if (entryId) {
     // First, ensure we have all entries loaded
     if (entries.value.length === 0) {
-      await getAllEntries();
+      await getLanguageEntries();
     }
 
     // Check if the requested entry is already in local state
@@ -983,9 +985,6 @@ async function loadEntry() {
 
 onMounted(async () => {
   await loadEntry();
-
-  // Load vocabulary if not already loaded
-  await loadVocabularyFromFirestore();
 });
 
 onBeforeRouteLeave(async () => {

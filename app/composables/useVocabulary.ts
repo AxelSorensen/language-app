@@ -54,7 +54,12 @@ export const useVocabulary = () => {
     }
   });
 
-  const addWord = (word: string, translation: string, language: string) => {
+  const addWord = (
+    word: string,
+    translation: string,
+    language: string,
+    addedAt?: Date
+  ) => {
     // Clean the word by removing commas and dots, and make lowercase
     const cleanedWord = word.replace(/[,.]/g, "").trim().toLowerCase();
 
@@ -80,7 +85,7 @@ export const useVocabulary = () => {
       vocabulary.value.push({
         word: cleanedWord,
         translation,
-        addedAt: new Date(),
+        addedAt: addedAt || new Date(),
         language,
         usageCount: 1,
       });
@@ -345,22 +350,6 @@ export const useVocabulary = () => {
   const deletedCount = computed(() => deletedEntries.value.size);
 
   // Watch for language changes and reload vocabulary
-  watch(
-    () => targetLanguage.value.id,
-    async (newLanguage, oldLanguage) => {
-      if (newLanguage !== oldLanguage) {
-        // Clear current vocabulary
-        vocabulary.value = [];
-        newlyAddedWords.value.clear();
-        newWordsCount.value = 0;
-        favoritedWords.value.clear();
-        modifiedEntries.value.clear();
-        deletedEntries.value.clear();
-        // Reload vocabulary for new language
-        await loadVocabularyFromFirestore();
-      }
-    }
-  );
 
   return {
     vocabulary: readonly(vocabulary),

@@ -4,6 +4,7 @@ import { LanguageService } from "~/services/LanguageService";
 import { generateRandomId } from "~/utils/misc";
 import { useVocabulary } from "~/composables/useVocabulary";
 import { useSettings } from "~/composables/useSettings";
+import { useEntries } from "~/composables/useEntries";
 import type { Word } from "~/types";
 
 export const useWords = (id?: string) => {
@@ -160,10 +161,14 @@ export const useWords = (id?: string) => {
         translateResult.translation !== "unknown"
       ) {
         const { addWord } = useVocabulary();
+        const { entries } = useEntries(targetLanguage.value.id);
+        const entry = entries.value.find((e) => e.id === id);
+        const addedAt = entry ? new Date(entry.createdAt) : new Date();
         wasAddedToVocabulary = addWord(
           cleanedWordText,
           translateResult.translation,
-          targetLanguage.value.id
+          targetLanguage.value.id,
+          addedAt
         );
       }
 
