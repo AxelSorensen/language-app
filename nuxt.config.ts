@@ -26,6 +26,14 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
+  app: {
+    head: {
+      link: [
+        { rel: 'manifest', href: '/manifest.json' }
+      ]
+    }
+  },
+
   modules: ["@nuxt/icon", "@nuxtjs/i18n"],
   i18n: {
     locales: [

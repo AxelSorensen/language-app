@@ -1,0 +1,17 @@
+{
+  "name": "Language App",
+  "short_name": "LangApp",
+  "description": "A language learning application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4A90E2",
+  "icons": [
+    {
+      "src": "/pwa-icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
