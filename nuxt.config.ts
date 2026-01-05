@@ -28,10 +28,8 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      link: [
-        { rel: 'manifest', href: '/manifest.json' }
-      ]
-    }
+      link: [{ rel: "manifest", href: "/manifest.json" }],
+    },
   },
 
   modules: ["@nuxt/icon", "@nuxtjs/i18n"],
