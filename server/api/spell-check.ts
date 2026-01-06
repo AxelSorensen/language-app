@@ -101,7 +101,7 @@ export default defineEventHandler(async (event) => {
   let typoSuggestions: string[] = [];
   let isTypoCorrect = false;
 
-  const hasGoodDictionary = ["en", "es", "de", "fr", "it", "pt", "da"].includes(
+  const hasGoodDictionary = ["en", "es", "de", "fr", "it", "da"].includes(
     targetLanguageId
   );
 

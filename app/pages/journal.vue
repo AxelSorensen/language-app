@@ -1223,7 +1223,24 @@ function completeEntry() {
   if (isProcessing.value) {
     isCompleting.value = true;
   }
-  // The entry is already saved automatically via the watch on fullText/wordCount
+
+  // Optimistically update the local cache with the completed entry
+  const route = useRoute();
+  const entryId = route.query.id as string;
+  if (entryId && entryId !== "undefined") {
+    const localEntry = entries.value.find((e) => e.id === entryId);
+    const createdAt = localEntry?.createdAt || new Date().toISOString();
+
+    updateEntry(entryId, {
+      text: fullText.value,
+      wordCount: wordCount.value,
+      words: words.value,
+      language: targetLanguage.value.id,
+      createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   // Navigate back to home page
   navigateTo("/?completed=true");
 }

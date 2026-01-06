@@ -571,7 +571,14 @@ const previousEntries = computed(() => {
 
 // Load all entries on mount
 onMounted(async () => {
-  await Promise.all([getLanguageEntries(), loadVocabularyFromFirestore()]);
+  // Only fetch entries if not already loaded (optimistic update)
+  if (entries.value.length === 0) {
+    await getLanguageEntries();
+  }
+  // Only load vocabulary if not already loaded
+  if (vocabulary.value.length === 0) {
+    await loadVocabularyFromFirestore();
+  }
   dataLoaded.value = true;
   if (route.query.completed === "true") {
     justCompleted.value = true;
