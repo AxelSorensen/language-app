@@ -434,6 +434,7 @@ import type { Word } from "~/types";
 import type { DiaryEntry } from "~/composables/useEntries";
 import VocabularyChart from "~/components/VocabularyChart.vue";
 import { useVocabulary } from "~/composables/useVocabulary";
+import { generateRandomId } from "~/utils/misc";
 
 const { wordGoal, sourceLanguage, targetLanguage } = useSettings();
 
@@ -709,9 +710,9 @@ async function startJournal() {
       await navigateTo(`/journal?id=${todayEntry.value.id}`);
     } else {
       // Create new entry
-      const randomId = crypto.randomUUID();
-      createJournalEntry(randomId);
+      const randomId = generateRandomId();
       await navigateTo(`/journal?id=${randomId}`);
+      createJournalEntry(randomId);
     }
   } catch (error) {
     console.error("Error starting journal:", error);

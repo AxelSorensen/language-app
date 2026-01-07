@@ -29,21 +29,37 @@ export function useEntries(languageId?: string) {
   );
 
   const createJournalEntry = async (id: string): Promise<void> => {
-    try {
-      const entryData: Omit<DiaryEntry, "id"> = {
-        text: "",
-        wordCount: 0,
-        words: [],
-        language: currentTargetLanguage.value,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    const entryData: DiaryEntry = {
+      id,
+      text: "",
+      wordCount: 0,
+      words: [],
+      language: currentTargetLanguage.value,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
+    // Optimistically add to local cache first
+    const lang = currentTargetLanguage.value;
+    if (!entriesCache.value[lang]) {
+      entriesCache.value[lang] = [];
+    }
+    entriesCache.value[lang].unshift(entryData); // Add to beginning of array
+
+    try {
       await firebaseRepo.setDoc(id, entryData);
       // Refresh the cache by fetching all entries for the current language
       await getLanguageEntries();
     } catch (error) {
       console.error("❌ Error creating journal entry with ID:", error);
+      // If Firebase save fails, remove from local cache
+      const langEntries = entriesCache.value[lang];
+      if (langEntries) {
+        const index = langEntries.findIndex((e) => e.id === id);
+        if (index >= 0) {
+          langEntries.splice(index, 1);
+        }
+      }
       throw error;
     }
   };

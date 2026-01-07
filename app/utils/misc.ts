@@ -1,6 +1,6 @@
 export function generateRandomId(): string {
   // Use crypto.randomUUID if available, otherwise fallback to a simple random ID
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
 
