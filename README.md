@@ -45,3 +45,5 @@ npm run emulate
 ## Status
 
 🚧 Actively developed personal project — core journaling, grammar-check, and vocabulary-tracking loop works; language coverage is still being expanded (recently reworked to target formal Arabic).
+
+✅ `pnpm install && pnpm run dev` verified working as of 2026-09-03 (dev server serves on localhost:3000). Note: repo ships a `pnpm-lock.yaml`, so use `pnpm` rather than `npm`. Requires your own Firebase project credentials and an OpenAI API key for full functionality (not verified beyond server boot).
