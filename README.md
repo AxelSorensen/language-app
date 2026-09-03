@@ -2,6 +2,8 @@
 
 A writing-practice app for learning a new language by journaling in it, with AI grammar correction along the way.
 
+![Language App screenshot](docs/screenshot.png)
+
 ## Features
 
 - ✍️ **Journal mode** — write freely in your target language toward a daily word-count goal, tracked with a progress bar
