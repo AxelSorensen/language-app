@@ -1,75 +1,47 @@
-# Nuxt Starter
+# 🗣️ Language App
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A writing-practice app for learning a new language by journaling in it, with AI grammar correction along the way.
 
-## Setup
+## Features
 
-Make sure to install dependencies:
+- ✍️ **Journal mode** — write freely in your target language toward a daily word-count goal, tracked with a progress bar
+- ✅ **Grammar checking** — sentences are sent to OpenAI for correction, returning a corrected version alongside your original
+- 📖 **Vocabulary tracking** — words you use get logged and charted over time (`useVocabulary`, `VocabularyChart`)
+- ⌨️ **Custom on-screen keyboard** — a `CustomKeyboard`/`KeyboardKey` component for typing characters and diacritics not on a standard layout
+- 🌍 **Multi-language support** — language switching (`LanguageSelector`) with locale files for English and Spanish, and support for formal Arabic (MSA)
+- 🔥 **Firebase-backed data** — entries and vocabulary persist via `FirestoreRepository`, with OpenAI calls routed through `OpenAIRepository`
+
+## Installation
 
 ```bash
-# npm
+git clone <this repo>
+cd language-app
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
+Requires Firebase project credentials and an OpenAI API key (see `firebase.json` / server config).
 
-Start the development server on `http://localhost:3000`:
+## Usage
 
 ```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
-
-Build the application for production:
+Then open [http://localhost:3000](http://localhost:3000). To run against local Firebase emulators instead:
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+npm run emulate
 ```
 
-Locally preview production build:
+## Built with
 
-```bash
-# npm
-npm run preview
+- [Nuxt 4](https://nuxt.com/)
+- [Firebase](https://firebase.google.com/) (Firestore)
+- [OpenAI API](https://platform.openai.com/)
+- [Chart.js](https://www.chartjs.org/) via `vue-chartjs`
+- [@nuxtjs/i18n](https://i18n.nuxtjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
 
-# pnpm
-pnpm preview
+## Status
 
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+🚧 Actively developed personal project — core journaling, grammar-check, and vocabulary-tracking loop works; language coverage is still being expanded (recently reworked to target formal Arabic).
