@@ -23,6 +23,16 @@ npm install
 
 Requires Firebase project credentials and an OpenAI API key (see `firebase.json` / server config).
 
+## Configuration
+
+Copy `.env.example` to `.env` and fill in:
+
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | Server-side OpenAI key used for grammar checking. Without it, `OpenAIRepository` returns mock responses instead of calling the real API. |
+
+Firebase config (`plugins/firebase.client.ts`) is currently hardcoded in the repo rather than read from environment variables — swap in your own Firebase project's config there if you need a different backend.
+
 ## Usage
 
 ```bash
